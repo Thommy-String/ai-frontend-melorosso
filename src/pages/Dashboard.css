@@ -1,0 +1,429 @@
+/* src/pages/Dashboard.css */
+
+:root {
+  --whatsapp-green: #075e54; /* Colore principale di WhatsApp */
+  --whatsapp-light-green: #128c7e;
+  --whatsapp-bubble-in: #dcf8c6; /* Bolla messaggio in entrata (utente) */
+  --whatsapp-bubble-out: #ffffff; /* Bolla messaggio in uscita (assistente) */
+  --whatsapp-background: #ece5dd; /* Sfondo generale della chat */
+  --whatsapp-text-dark: #333;
+  --whatsapp-text-light: #888;
+  --border-color: #e0e0e0;
+  --shadow-light: rgba(0, 0, 0, 0.05);
+  --shadow-medium: rgba(0, 0, 0, 0.1);
+  --accent: #128c7e; /* Mantenuto per le metriche */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f0f2f5; /* Sfondo leggermente più scuro per la pagina */
+}
+
+/* Container generale */
+.dashboard-container {
+  margin: 48px auto;
+  padding: 0 20px;
+  max-width: 1200px; /* Larghezza massima del contenuto */
+}
+
+/* Titolo pagina */
+.dashboard-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #151515;
+  margin-bottom: 84px;
+  text-align: center;
+}
+
+/* Griglia delle metriche */
+.dashboard-cards {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 40px; /* Spazio tra metriche e chat */
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 2px 32px rgba(32, 36, 47, 0.07), 0 0.5px 2px rgba(60, 60, 60, 0.08);
+  width: 290px;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 32px rgba(32, 36, 47, 0.13), 0 2px 8px rgba(60, 60, 60, 0.10);
+}
+
+.metric-card-img {
+  width: 50px;
+  max-width: 120px;
+  aspect-ratio: 1 / 1;
+  margin: -32px auto 14px;
+  border-radius: 22px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.07);
+  object-fit: cover;
+  background: #f5f6fa;
+}
+
+.metric-card-content {
+  padding: 0 22px;
+  text-align: center;
+  flex-grow: 1;
+}
+
+.metric-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 12px;
+  color: #222;
+  letter-spacing: -0.02em;
+}
+
+.metric-card-subtitle {
+  font-size: 0.92rem;
+  color: #7b7e87;
+  margin: 4px 0 10px;
+}
+
+.metric-card-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 6px 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.metric-card-description {
+  font-size: 0.97rem;
+  color: #6f7076;
+  margin-top: 2px;
+  min-height: 48px;
+}
+
+@media (max-width: 950px) {
+  .dashboard-cards {
+    gap: 20px;
+  }
+
+  .metric-card {
+    width: 95vw;
+    max-width: 320px;
+    min-height: 280px;
+  }
+}
+
+/* --- Sezione Chat WhatsApp Style --- */
+.chat-section-container {
+  display: flex;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px var(--shadow-light);
+  overflow: hidden;
+  height: 70vh; /* Altezza fissa per il layout della chat su desktop */
+  max-width: 1000px; /* Larghezza massima del container della chat */
+  margin: 0 auto; /* Centra il container della chat */
+  position: relative; /* Per posizionamento assoluto dei pannelli su mobile */
+}
+
+/* Pannello della lista chat (sinistra) */
+.chat-list-pane {
+  width: 350px; /* Larghezza fissa per la lista chat su desktop */
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0; /* Impedisce che si rimpicciolisca */
+}
+
+.chat-list-header {
+  background-color: var(--whatsapp-green);
+  color: #fff;
+  padding: 15px 20px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 5px var(--shadow-light);
+  z-index: 10;
+}
+
+.chat-list-items {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.chat-list-item:hover {
+  background-color: #f5f5f5;
+}
+
+.chat-list-item.active {
+  background-color: #e9e9eb; /* Colore per la chat selezionata */
+}
+
+.chat-list-item-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  /* Rimosso background-color: #ccc; e background-image: url('/user-avatar.svg'); */
+  margin-right: 15px;
+  flex-shrink: 0;
+  background-size: cover; /* Assicura che l'immagine copra l'intero cerchio */
+  background-position: center; /* Centra l'immagine */
+  background-repeat: no-repeat; /* Impedisce la ripetizione dell'immagine */
+  /* Aggiunto un bordo per staccare l'avatar dallo sfondo in caso di immagini chiare */
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+
+.chat-list-item-content {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.chat-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.chat-list-item-id {
+  font-weight: 600;
+  color: var(--whatsapp-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-list-item-time {
+  font-size: 0.8rem;
+  color: var(--whatsapp-text-light);
+}
+
+.chat-list-item-preview {
+  font-size: 0.9rem;
+  color: var(--whatsapp-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-sessions-message {
+  padding: 20px;
+  text-align: center;
+  color: var(--whatsapp-text-light);
+}
+
+/* Pannello dettaglio chat (destra) */
+.chat-detail-pane {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  background-image: url('https://user-images.githubusercontent.com/15075759/28719142-86dc0f70-74b1-11e7-92a3-2789df288a8d.png'); /* Sfondo classico di WhatsApp */
+  background-repeat: repeat;
+  background-size: 200px;
+}
+
+.chat-detail-header {
+  background-color: var(--whatsapp-green);
+  color: #fff;
+  padding: 15px 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 5px var(--shadow-light);
+  z-index: 10;
+}
+
+.chat-detail-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.8rem;
+  margin-right: 15px;
+  cursor: pointer;
+  display: none; /* Nascosto su desktop, mostrato su mobile */
+}
+
+.messages-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #e0e0e0;
+}
+
+.message-bubble {
+  padding: 8px 12px;
+  border-radius: 8px;
+  max-width: 75%;
+  word-wrap: break-word;
+  position: relative;
+  box-shadow: 0 1px 0.5px var(--shadow-light);
+}
+
+.message-bubble.user {
+  background-color: var(--whatsapp-bubble-in);
+  color: var(--whatsapp-text-dark);
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.message-bubble.assistant {
+  background-color: var(--whatsapp-bubble-out);
+  color: var(--whatsapp-text-dark);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.message-bubble p {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.message-time {
+  display: block;
+  font-size: 0.7rem;
+  text-align: right;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 4px;
+}
+
+.loading-message,
+.no-messages-message,
+.no-chat-selected {
+  text-align: center;
+  padding: 20px;
+  color: var(--whatsapp-text-light);
+}
+
+.no-chat-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 1.1rem;
+}
+
+
+/* --- Responsive per Mobile --- */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 0; /* Rimuovi padding sui lati per mobile */
+    margin-top: 20px;
+  }
+
+  .dashboard-title {
+    font-size: 1.8rem;
+
+  }
+
+  /* La sezione chat diventa un contenitore full width */
+  .chat-section-container {
+    flex-direction: column; /* Impila i pannelli verticalmente */
+    height: auto; /* Altezza adattiva su mobile */
+    min-height: calc(100vh - 80px); /* Assicurati che prenda quasi tutta l'altezza dello schermo disponibile */
+    border-radius: 0; /* Nessun bordo arrotondato su mobile per full screen */
+    position: relative; /* Mantiene il contesto per i figli posizionati in assoluto */
+  }
+
+  .chat-list-pane {
+    width: 100%; /* La lista occupa tutta la larghezza */
+    border-right: none;
+    border-bottom: 1px solid var(--border-color); /* Separatore per la lista */
+    height: calc(100vh - 80px); /* Altezza fissa per la lista chat quando attiva */
+    position: absolute; /* Posiziona sopra il dettaglio chat */
+    top: 0;
+    left: 0;
+    background-color: #fff;
+    z-index: 20; /* Assicurati che sia sopra il dettaglio */
+    transform: translateX(0%); /* Visibile per default su mobile */
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .chat-detail-pane {
+    width: 100%; /* Il dettaglio chat occupa tutta la larghezza */
+    position: absolute; /* Posiziona sopra la lista chat */
+    top: 0;
+    left: 0;
+    z-index: 30; /* Assicurati che sia sopra la lista quando mostrato */
+    transform: translateX(100%); /* Nascondi per default a destra */
+    transition: transform 0.3s ease-in-out;
+    height: calc(100vh - 80px); /* Altezza fissa per il dettaglio chat */
+  }
+
+  /* Quando una chat è selezionata, il pannello del dettaglio chat si sposta a sinistra */
+  .chat-section-container.chat-open .chat-list-pane {
+    transform: translateX(-100%); /* Nascondi la lista a sinistra */
+  }
+
+  .chat-section-container.chat-open .chat-detail-pane {
+    transform: translateX(0); /* Mostra il dettaglio chat */
+  }
+
+  .back-button {
+    display: block; /* Mostra il bottone indietro su mobile */
+  }
+
+  .no-chat-selected {
+      display: none; /* Nascondi il messaggio "seleziona una chat" quando la lista è visibile */
+  }
+
+  /* Per schermi più piccoli, nascondi completamente il messaggio "seleziona una chat"
+     quando la lista è attiva. Questo evita sovrapposizioni o comportamenti strani
+     quando lo spazio è limitato. */
+  .chat-section-container:not(.chat-open) .chat-detail-pane .no-chat-selected {
+      display: none;
+  }
+}
+
+/* Regolazione per schermi molto piccoli */
+@media (max-width: 480px) {
+  .chat-list-item {
+    padding: 12px 15px;
+  }
+
+  .chat-list-item-avatar {
+    width: 45px;
+    height: 45px;
+  }
+
+  .chat-list-header, .chat-detail-header {
+    padding: 12px 15px;
+  }
+
+  .messages-container {
+    padding: 15px;
+  }
+
+  .message-bubble {
+    font-size: 0.9rem;
+  }
+}
