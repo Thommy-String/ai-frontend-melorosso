@@ -48,59 +48,43 @@ export default function Dashboard() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('jwt');
-    if (!token || !slug) {
-      nav('/login');
-      return;
+useEffect(() => {
+  const token = localStorage.getItem('jwt');
+  if (!token || !slug) { nav('/login'); return; }
+
+  const headers = { Authorization: `Bearer ${token}` };
+
+  Promise.all([
+    fetch(`${API}/stats/${slug}`,          { headers }),
+    fetch(`${API}/stats/sessions/${slug}`, { headers })
+  ])
+  .then(async ([statsRes, sessionsRes]) => {
+    if ([statsRes, sessionsRes].some(r => r.status === 401 || r.status === 403)) {
+      nav('/login'); return;
     }
 
-    const headers = { Authorization: `Bearer ${token}` };
+    const statsData     = await statsRes.json();
+    const sessionsData  = await sessionsRes.json() as Session[];
 
-    Promise.all([
-      fetch(`${API}/stats/${slug}`, { headers }),
-      fetch(`${API}/stats/sessions/${slug}`, { headers }),
-    ])
-      .then(async ([statsRes, sessionsRes]) => {
-        if ([statsRes, sessionsRes].some((r) => r.status === 401 || r.status === 403)) {
-          nav('/login');
-          return;
-        }
-        const statsData = await statsRes.json();
-        const sessionsData: Session[] = await sessionsRes.json();
+    /* token mese corrente / precedente                   */
+    setMonthTokens(    Number(statsData.monthTokens     || 0));
+    setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
 
-        setAct(statsData.active);
-        setMsgs(statsData.totalMessages);
-        setAvg(statsData.avg_response || statsData.avgResponse || 0);
-        setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+    /* altre metriche                                     */
+    setAct(statsData.active);
+    setMsgs(statsData.totalMessages);
+    setAvg(statsData.avg_response || statsData.avgResponse || 0);
+    setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
 
-
-        /* ---------- consumo token mese in corso / mese precedente --------- */
-        const now = new Date();
-        const yyyymmNow = now.getFullYear() * 100 + (now.getMonth() + 1);
-        const yyyymmPrev = now.getMonth() === 0
-          ? (now.getFullYear() - 1) * 100 + 12
-          : now.getFullYear() * 100 + now.getMonth();
-
-        const usageArr: UsageRow[] = statsData.usage ?? [];
-        const currRow = usageArr.find(u => u.yyyymm === yyyymmNow);
-        const prevRow = usageArr.find(u => u.yyyymm === yyyymmPrev);
-
-        setMonthTokens(Number(currRow?.tokens || 0));
-        setPrevMonthTokens(Number(prevRow?.tokens || 0));
-
-        // Assegna un'immagine placeholder unica a ciascuna sessione
-        // Usiamo l'indice della sessione modulato da MAX_PICSUM_ID per ciclare le immagini disponibili,
-        // aggiungendo un offset per evitare gli ID più bassi che potrebbero essere immagini generiche.
-        const sessionsWithAvatars = sessionsData.map((session, index) => {
-          const imageId = (index % (MAX_PICSUM_ID - 50)) + 50; // Inizia da 50 per maggiore varietà
-          const avatarUrl = `${LOREM_PICSUM_BASE_URL}${imageId}/${AVATAR_SIZE}`;
-          return { ...session, avatarUrl: avatarUrl };
-        });
-        setSessionsList(sessionsWithAvatars);
-      })
-      .catch(console.error);
-  }, [slug, nav]);
+    /* avatar placeholder …                               */
+    const sessionsWithAvatars = sessionsData.map((s, idx) => {
+      const id = (idx % (MAX_PICSUM_ID - 50)) + 50;
+      return { ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${id}/${AVATAR_SIZE}` };
+    });
+    setSessionsList(sessionsWithAvatars);
+  })
+  .catch(console.error);
+}, [slug, nav]);
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
