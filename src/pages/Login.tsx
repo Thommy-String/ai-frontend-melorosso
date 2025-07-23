@@ -49,7 +49,7 @@ export default function Login() {
       // Estrai slug dal JWT e redirigi
       const payload = parseJwt(token);
       const slug = payload?.slug || '';
-      navigate(`dashboard/${slug}`, { replace: true });
+      navigate(`/dashboard/${slug}`, { replace: true });
     } catch (err) {
       setError((err as Error).message || 'Errore di autenticazione');
     } finally {
