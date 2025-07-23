@@ -84,8 +84,21 @@ export default function Dashboard() {
         /* --------- insight preview + parsing ---------- */
         const { summary = '', bullets = [], actions = [] } = insightsData;
 
-        // una riga di anteprima max 120 caratteri
-        const preview = summary.slice(0, 120) + (summary.length > 120 ? '…' : '');
+        // ► se il riassunto è più lungo di ~400 char prendi il primo paragrafo,
+        //   altrimenti mostra tutto il paragrafo e tronca a 400 char
+        let previewSrc = summary.trim();
+        if (!previewSrc) previewSrc = bullets[0] || actions[0] || '';
+
+        const MAX_PREVIEW = 300;
+        const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];   // primo paragrafo
+        const preview = firstParagraph.length > MAX_PREVIEW
+          ? firstParagraph.slice(0, MAX_PREVIEW) + '…'
+          : firstParagraph;
+
+        console.log('▶ insightsData:', insightsData);
+        console.log('▶ previewSrc  :', previewSrc);
+        console.log('▶ preview     :', preview);
+
         setInsightPreview(preview);
 
 
@@ -183,7 +196,7 @@ export default function Dashboard() {
 
 
         <MetricCard
-          img="https://static.thenounproject.com/png/6203007-200.png"
+          img="https://cdn.creazilla.com/icons/3261496/data-usage-icon-lg.png"
           title="Token mese corrente"
           subtitle={new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' })}
           value={monthTokens}
@@ -316,7 +329,7 @@ function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   return (
     <div className="metric-card">
       <img
-        src="https://static.thenounproject.com/png/1201656-200.png"
+        src="https://cdn-icons-png.flaticon.com/512/2618/2618540.png"
         alt="FAQ"
         className="metric-card-img"
       />
@@ -348,16 +361,16 @@ function InsightsCard(
 ) {
   return (
     <div className="metric-card insights-card">
-      <img src="https://static.thenounproject.com/png/2230962-200.png"
-           alt="Insights" className="metric-card-img" />
+      <img src="https://cdn-icons-png.flaticon.com/512/3068/3068380.png"
+        alt="Insights" className="metric-card-img" />
 
       <div className="metric-card-content">
         <div className="metric-card-title">Analisi conversazioni</div>
         <p style={{ fontSize: '.85rem', margin: '8px 0' }}>{preview}</p>
 
         <Link to={`/insights/${slug}`}
-              style={{ fontSize: '.8rem', color: 'var(--accent)' }}>
-          Leggi tutte le analisi →
+          style={{ fontSize: '.8rem', color: 'var(--accent)' }}>
+          Leggi le analisi delle chat→
         </Link>
       </div>
     </div>

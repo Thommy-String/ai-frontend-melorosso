@@ -1,125 +1,249 @@
 /* src/pages/Insights.css */
 
+/* Importa le variabili globali da Dashboard.css */
+/* Assicurati che Dashboard.css sia caricato prima di questo file,
+   o includi le variabili :root direttamente qui se non è globale. */
+:root {
+  --whatsapp-green: #075e54; /* Colore principale di WhatsApp */
+  --whatsapp-light-green: #128c7e;
+  --whatsapp-bubble-in: #dcf8c6; /* Bolla messaggio in entrata (utente) */
+  --whatsapp-bubble-out: #ffffff; /* Bolla messaggio in uscita (assistente) */
+  --whatsapp-background: #ece5dd; /* Sfondo generale della chat */
+  --whatsapp-text-dark: #333;
+  --whatsapp-text-light: #888;
+  --border-color: #e0e0e0;
+  --shadow-light: rgba(0, 0, 0, 0.05);
+  --shadow-medium: rgba(0, 0, 0, 0.1);
+  --accent: #128c7e; /* Mantenuto per le metriche */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f0f2f5; /* Sfondo leggermente più scuro per la pagina */
+}
 
 .insights-page {
   margin: 48px auto;
   padding: 0 20px;
-  max-width: 1000px; /* Un po' più stretto per i contenuti di testo */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: var(--whatsapp-text-dark); /* Colore del testo scuro */
+  max-width: 1000px; /* Larghezza coerente con la dashboard */
+  color: var(--whatsapp-text-dark);
 }
 
-.insights-page h1 {
+.insights-loading,
+.insights-error {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 1.1rem;
+  color: var(--whatsapp-text-light);
+}
+
+/* --- Header della Pagina --- */
+.insights-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color); /* Sottile linea divisoria */
+}
+
+.insights-header h1 {
   font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: #151515;
-  margin-bottom: 40px; /* Spazio sotto il titolo principale */
-  text-align: center;
+  margin: 0; /* Rimuove margini predefiniti */
 }
 
-.insights-page section {
-  background: #fff;
-  border-radius: 12px; /* Angoli leggermente più arrotondati, coerenti con le card */
-  box-shadow: 0 2px 16px rgba(32, 36, 47, 0.05), 0 0.5px 2px rgba(60, 60, 60, 0.06); /* Ombra più leggera */
-  padding: 30px;
-  margin-bottom: 32px; /* Spazio tra le sezioni */
-}
-
-.insights-page section:last-child {
-  margin-bottom: 0; /* Rimuove il margine inferiore dall'ultima sezione */
-}
-
-.insights-page h2 {
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: var(--whatsapp-green); /* Colore WhatsApp green per i titoli di sezione */
-  margin-top: 0;
-  margin-bottom: 20px;
-  border-bottom: 2px solid var(--border-color); /* Una sottile linea come separatore */
-  padding-bottom: 10px;
-  display: flex; /* Per allineare icona se presente */
+.back-link {
+  color: var(--whatsapp-light-green); /* Colore link coerente con accent */
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.2s ease;
+  display: flex;
   align-items: center;
+  gap: 5px; /* Spazio tra freccia e testo */
 }
 
-.insights-page ul,
-.insights-page ol {
-  list-style-position: inside; /* Punti elenco e numeri all'interno */
-  padding-left: 0; /* Rimuove il padding di default */
+.back-link:hover {
+  color: var(--whatsapp-green); /* Verde più scuro all'hover */
+}
+
+/* --- Articolo di Sintesi (Panoramica) --- */
+.insights-summary {
+  background: #fff;
+  border-radius: 16px; /* Angoli leggermente più pronunciati per le sezioni principali */
+  box-shadow: 0 4px 20px rgba(32, 36, 47, 0.08), 0 1px 4px rgba(60, 60, 60, 0.08); /* Ombra più marcata */
+  padding: 30px;
+  margin-bottom: 32px;
+}
+
+.insights-summary h2 {
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--whatsapp-green);
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.insights-summary p {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--whatsapp-text-dark);
   margin: 0;
 }
 
-.insights-page ul li,
-.insights-page ol li {
+/* --- Griglia Insight + Azioni --- */
+.insights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Due colonne di uguale larghezza */
+  gap: 32px; /* Spazio tra le card */
+}
+
+.insights-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(32, 36, 47, 0.08), 0 1px 4px rgba(60, 60, 60, 0.08);
+  padding: 30px;
+  display: flex;
+  flex-direction: column; /* Per allineamento interno */
+}
+
+.insights-card h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--whatsapp-light-green); /* Un tono di verde diverso per i sottotitoli */
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color); /* Linea più sottile per i sottotitoli */
+}
+
+.insights-card ul,
+.insights-card ol {
+  list-style: none; /* Rimuove lo stile predefinito */
+  padding: 0;
+  margin: 0;
+}
+
+.insights-card ul li,
+.insights-card ol li {
   font-size: 1.05rem;
   line-height: 1.6;
-  margin-bottom: 12px; /* Spazio tra gli elementi della lista */
+  margin-bottom: 12px;
   color: var(--whatsapp-text-dark);
-  position: relative;
-  padding-left: 25px; /* Spazio per l'icona o il numero personalizzato */
+  display: flex; /* Per allineare bullet/numero con testo */
+  align-items: flex-start; /* Allinea l'inizio del testo */
+  gap: 10px; /* Spazio tra bullet/numero e testo */
 }
 
-/* Stile per gli elementi delle liste non ordinate (bullet points) */
-.insights-page ul li::before {
-  content: '•'; /* Un bullet point semplice */
-  color: var(--whatsapp-light-green); /* Colore del bullet point */
-  font-weight: bold;
-  display: inline-block;
-  width: 1em;
-  margin-left: -1em;
-  position: absolute;
-  left: 0;
+/* Stile per i bullet points (Insights Principali) */
+.insights-card ul li .dot {
+  min-width: 8px; /* Dimensione fissa per il puntino */
+  height: 8px;
+  background-color: var(--whatsapp-light-green); /* Colore puntino */
+  border-radius: 50%;
+  margin-top: 8px; /* Allinea il puntino verticalmente con il testo */
+  flex-shrink: 0; /* Impedisce che il puntino si rimpicciolisca */
 }
 
-/* Stile per gli elementi delle liste ordinate (numeri) */
-.insights-page ol li {
-  counter-increment: list-counter; /* Incrementa un contatore per i numeri */
+/* Stile per i numeri (Azioni Consigliate) */
+.insights-card ol li {
+  counter-increment: action-counter; /* Incrementa un contatore per i numeri */
 }
 
-.insights-page ol li::before {
-  content: counter(list-counter) "."; /* Utilizza il contatore per i numeri */
+.insights-card ol li::before {
+  content: counter(action-counter) ".";
   color: var(--whatsapp-light-green);
-  font-weight: bold;
-  display: inline-block;
-  width: 1.5em; /* Spazio per i numeri più lunghi */
-  margin-left: -1.5em;
-  position: absolute;
-  left: 0;
+  font-weight: 700;
+  min-width: 25px; /* Spazio per i numeri a 2 cifre */
   text-align: right;
-  padding-right: 5px;
+  flex-shrink: 0;
+}
+
+.insights-card p {
+  font-size: 1rem;
+  color: var(--whatsapp-text-light);
+  text-align: center;
+  margin-top: 15px; /* Spazio sopra il messaggio */
+}
+
+
+/* --- Responsive Design --- */
+@media (max-width: 900px) {
+  .insights-grid {
+    grid-template-columns: 1fr; /* Una colonna su schermi più piccoli */
+  }
 }
 
 @media (max-width: 768px) {
   .insights-page {
-    padding: 0 15px;
     margin-top: 20px;
+    padding: 0 15px;
   }
 
-  .insights-page h1 {
-    font-size: 1.8rem;
+  .insights-header {
+    flex-direction: column; /* Stack header items */
+    align-items: flex-start;
     margin-bottom: 30px;
   }
 
-  .insights-page h2 {
-    font-size: 1.4rem;
-    margin-bottom: 15px;
+  .insights-header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 15px; /* Spazio tra titolo e link */
   }
 
-  .insights-page section {
-    padding: 20px;
-    margin-bottom: 20px;
+  .insights-summary {
+    padding: 25px;
+    margin-bottom: 25px;
   }
 
-  .insights-page ul li,
-  .insights-page ol li {
-    font-size: 1rem;
+  .insights-summary h2 {
+    font-size: 1.5rem;
+  }
+
+  .insights-card {
+    padding: 25px;
+  }
+
+  .insights-card h3 {
+    font-size: 1.3rem;
+  }
+
+  .insights-card ul li,
+  .insights-card ol li {
+    font-size: 0.95rem;
     margin-bottom: 10px;
-    padding-left: 20px;
+  }
+
+  .insights-card ul li .dot {
+    margin-top: 6px;
   }
 }
 
 @media (max-width: 480px) {
-  .insights-page h1 {
+  .insights-header h1 {
     font-size: 1.6rem;
+  }
+
+  .back-link {
+    font-size: 0.9rem;
+  }
+
+  .insights-summary,
+  .insights-card {
+    border-radius: 12px; /* Riduci leggermente il raggio su schermi molto piccoli */
+  }
+
+  .insights-summary h2 {
+    font-size: 1.3rem;
+  }
+
+  .insights-card h3 {
+    font-size: 1.2rem;
   }
 }
