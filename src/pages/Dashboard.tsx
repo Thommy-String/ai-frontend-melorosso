@@ -20,21 +20,14 @@ interface Message {
   created_at: string;
 }
 
-interface UsageRow {
-  yyyymm: number;
-  tokens: number | null;
-}
 
 interface Faq { question: string; count: number }
 
 /* ------- tipi & stato ------------------------------------------- */
 interface Insight {
   title: string;     // es. "Dubbi ricorrenti sui prezzi"
-  body : string;     // testo descrittivo
+  body: string;     // testo descrittivo
 }
-
-const [insights, setInsights] = useState<Insight[]>([]);   // <— nuovo
-
 
 
 // URL base per le immagini placeholder di Lorem Picsum
@@ -42,6 +35,7 @@ const [insights, setInsights] = useState<Insight[]>([]);   // <— nuovo
 const LOREM_PICSUM_BASE_URL = 'https://picsum.photos/id/';
 const AVATAR_SIZE = 200; // Dimensione in pixel per l'avatar (quadrato)
 const MAX_PICSUM_ID = 1000; // Il numero massimo di ID disponibili su Picsum Photos
+
 
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
@@ -54,58 +48,63 @@ export default function Dashboard() {
   const [sessionsCount, setSessionsCount] = useState(0);
 
   const [faqs, setFaqs] = useState<{ q: string; count: number }[]>([]);
-  const [tips, setTips]   = useState('');  
+  const [tips, setTips] = useState('');
   const [sessionsList, setSessionsList] = useState<Session[]>([]
   );
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [insights, setInsights] = useState<Insight[]>([]);
 
-useEffect(() => {
-  const token = localStorage.getItem('jwt');
-  if (!token || !slug) { nav('/login'); return; }
 
-  const headers = { Authorization: `Bearer ${token}` };
+  useEffect(() => {
+    const token = localStorage.getItem('jwt');
+    if (!token || !slug) { nav('/login'); return; }
 
-  Promise.all([
-    fetch(`${API}/stats/${slug}`,          { headers }),             
-    fetch(`${API}/stats/sessions/${slug}`, { headers }),             
-    fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-    fetch(`${API}/stats/insights/${slug}?days=30`, { headers })           
-  ])
-  .then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
-    if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
-      nav('/login'); return;
-    }
+    const headers = { Authorization: `Bearer ${token}` };
 
-    /* --- deserialize ------------------------------------------------ */
-    const statsData    = await statsRes.json();
-    const sessionsData = await sessionsRes.json() as Session[];
-    const faqData      = await faqRes.json();
-    const insightsData = await insRes.json();
+    Promise.all([
+      fetch(`${API}/stats/${slug}`, { headers }),
+      fetch(`${API}/stats/sessions/${slug}`, { headers }),
+      fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+      fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
+    ])
+      .then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
+        if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
+          nav('/login'); return;
+        }
 
-    /* --- metriche --------------------------------------------------- */
-    setMonthTokens(    Number(statsData.monthTokens     || 0));
-    setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
-    setAct(statsData.active);
-    setMsgs(statsData.totalMessages);
-    setAvg(statsData.avg_response || statsData.avgResponse || 0);
-    setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
-    setInsights(insightsData.insights ?? []);
+        /* --- deserialize ------------------------------------------------ */
+        const statsData = await statsRes.json();
+        const sessionsData = await sessionsRes.json() as Session[];
+        const faqData = await faqRes.json();
+        const insightsData = await insRes.json();
 
-    /* --- FAQ -------------------------------------------------------- */
-    setFaqs(faqData.faqs ?? []); 
-    setTips(faqData.tips  ?? '');         
+        /* --- metriche --------------------------------------------------- */
+        setMonthTokens(Number(statsData.monthTokens || 0));
+        setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
+        setAct(statsData.active);
+        setMsgs(statsData.totalMessages);
+        setAvg(statsData.avg_response || statsData.avgResponse || 0);
+        setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
 
-    /* --- avatar placeholder ---------------------------------------- */
-    const sessionsWithAvatars = sessionsData.map((s, idx) => {
-      const id = (idx % (MAX_PICSUM_ID - 50)) + 50;
-      return { ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${id}/${AVATAR_SIZE}` };
-    });
-    setSessionsList(sessionsWithAvatars);
-  })
-  .catch(console.error);
-}, [slug, nav]);
+
+        /* --- FAQ -------------------------------------------------------- */
+        setFaqs(faqData.faqs ?? []);
+        setTips(faqData.tips ?? '');
+
+        /*Insights */
+        setInsights(insightsData.insights ?? []);
+
+        /* --- avatar placeholder ---------------------------------------- */
+        const sessionsWithAvatars = sessionsData.map((s, idx) => {
+          const id = (idx % (MAX_PICSUM_ID - 50)) + 50;
+          return { ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${id}/${AVATAR_SIZE}` };
+        });
+        setSessionsList(sessionsWithAvatars);
+      })
+      .catch(console.error);
+  }, [slug, nav]);
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
@@ -171,11 +170,15 @@ useEffect(() => {
           description={`Mese scorso: ${prevMonthTokens.toLocaleString()} token`}
         />
 
-        {/* ---- NUOVA CARD FAQ ---- */}
-  {faqs.length > 0 && (
-  <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
-)}
-        
+        {/* ---- CARD FAQ ---- */}
+        {faqs.length > 0 && (
+          <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
+        )}
+
+        {/* INSIGHTS */}
+        {insights.length > 0 && <InsightsCard insights={insights} />}
+
+
       </div>
 
       <div className={`chat-section-container ${selectedSessionId ? 'chat-open' : ''}`}>
