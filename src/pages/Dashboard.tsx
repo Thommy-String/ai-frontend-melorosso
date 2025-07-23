@@ -25,6 +25,13 @@ interface UsageRow {
   tokens: number | null;
 }
 
+interface FAQ {              
+  q: string;                 
+  count: number;             
+}
+
+const [faqs, setFaqs] = useState<FAQ[]>([]);  
+
 // URL base per le immagini placeholder di Lorem Picsum
 // Possiamo generare immagini uniche usando un ID alla fine: https://picsum.photos/id/ID/SIZE
 const LOREM_PICSUM_BASE_URL = 'https://picsum.photos/id/';
@@ -56,15 +63,17 @@ useEffect(() => {
 
   Promise.all([
     fetch(`${API}/stats/${slug}`,          { headers }),
-    fetch(`${API}/stats/sessions/${slug}`, { headers })
+    fetch(`${API}/stats/sessions/${slug}`, { headers }),
+    fetch(`${API}/stats/faq/${slug}?days=30`, { headers })
   ])
-  .then(async ([statsRes, sessionsRes]) => {
+  .then(async ([statsRes, sessionsRes, faqRes]) => {
     if ([statsRes, sessionsRes].some(r => r.status === 401 || r.status === 403)) {
       nav('/login'); return;
     }
 
     const statsData     = await statsRes.json();
     const sessionsData  = await sessionsRes.json() as Session[];
+    const faqData      = await faqRes.json();
 
     /* token mese corrente / precedente                   */
     setMonthTokens(    Number(statsData.monthTokens     || 0));
@@ -75,6 +84,7 @@ useEffect(() => {
     setMsgs(statsData.totalMessages);
     setAvg(statsData.avg_response || statsData.avgResponse || 0);
     setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+    setFaqs(faqData.faqs || []); 
 
     /* avatar placeholder …                               */
     const sessionsWithAvatars = sessionsData.map((s, idx) => {
@@ -149,6 +159,12 @@ useEffect(() => {
           value={monthTokens}
           description={`Mese scorso: ${prevMonthTokens.toLocaleString()} token`}
         />
+
+        {/* ---- NUOVA CARD FAQ ---- */}
+  {faqs.length > 0 && (
+    <FaqCard faqs={faqs.slice(0, 5)} />    
+  )}
+        
       </div>
 
       <div className={`chat-section-container ${selectedSessionId ? 'chat-open' : ''}`}>
@@ -253,6 +269,33 @@ function MetricCard({
         <div className="metric-card-subtitle">{subtitle}</div>
         <div className="metric-card-value">{value}</div>
         <div className="metric-card-description">{description}</div>
+      </div>
+    </div>
+  );
+}
+
+
+function FaqCard({ faqs }: { faqs: FAQ[] }) {
+  return (
+    <div className="metric-card">
+      <img
+        src="https://static.thenounproject.com/png/1201656-200.png"
+        alt="FAQ"
+        className="metric-card-img"
+      />
+      <div className="metric-card-content">
+        <div className="metric-card-title">Domande più frequenti</div>
+        <div className="metric-card-subtitle">Ultimi 30 giorni</div>
+
+        {/* elenco puntato compatto */}
+        <ul style={{ textAlign: 'left', paddingLeft: 0, listStyle: 'none', marginTop: 8 }}>
+          {faqs.map(f => (
+            <li key={f.q} style={{ fontSize: '0.9rem', marginBottom: 6 }}>
+              <strong style={{ color: 'var(--accent)' }}>{f.count}×</strong>{' '}
+              {f.q}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
