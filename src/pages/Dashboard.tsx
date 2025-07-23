@@ -273,24 +273,19 @@ function MetricCard({
 }
 
 
-function FaqCard({ faqs }: { faqs: FAQ[] }) {
+function FaqCard({ faqs }: { faqs: Faq[] }) {
   return (
     <div className="metric-card">
-      <img
-        src="https://static.thenounproject.com/png/1201656-200.png"
-        alt="FAQ"
-        className="metric-card-img"
-      />
+      <img src="https://static.thenounproject.com/png/1201656-200.png" alt="FAQ" className="metric-card-img" />
       <div className="metric-card-content">
         <div className="metric-card-title">Domande più frequenti</div>
         <div className="metric-card-subtitle">Ultimi 30 giorni</div>
 
-        {/* elenco puntato compatto */}
-        <ul style={{ textAlign: 'left', paddingLeft: 0, listStyle: 'none', marginTop: 8 }}>
+        <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: 8 }}>
           {faqs.map(f => (
-            <li key={f.q} style={{ fontSize: '0.9rem', marginBottom: 6 }}>
+            <li key={f.question} style={{ fontSize: '0.9rem', marginBottom: 6 }}>
               <strong style={{ color: 'var(--accent)' }}>{f.count}×</strong>{' '}
-              {f.q}
+              {f.question}
             </li>
           ))}
         </ul>
