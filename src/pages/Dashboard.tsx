@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [sessionsCount, setSessionsCount] = useState(0);
 
   const [faqs, setFaqs] = useState<{ q: string; count: number }[]>([]);
+  const [tips, setTips]   = useState('');  
   const [sessionsList, setSessionsList] = useState<Session[]>([]
   );
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -82,7 +83,8 @@ useEffect(() => {
     setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
 
     /* --- FAQ -------------------------------------------------------- */
-    setFaqs(faqData.faqs ?? []);          
+    setFaqs(faqData.faqs ?? []); 
+    setTips(faqData.tips  ?? '');         
 
     /* --- avatar placeholder ---------------------------------------- */
     const sessionsWithAvatars = sessionsData.map((s, idx) => {
@@ -160,8 +162,8 @@ useEffect(() => {
 
         {/* ---- NUOVA CARD FAQ ---- */}
   {faqs.length > 0 && (
-    <FaqCard faqs={faqs.slice(0, 5)} />    
-  )}
+  <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
+)}
         
       </div>
 
@@ -273,10 +275,15 @@ function MetricCard({
 }
 
 
-function FaqCard({ faqs }: { faqs: Faq[] }) {
+// 👇 FaqCard (rimpiazza quello esistente)
+function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   return (
     <div className="metric-card">
-      <img src="https://static.thenounproject.com/png/1201656-200.png" alt="FAQ" className="metric-card-img" />
+      <img
+        src="https://static.thenounproject.com/png/1201656-200.png"
+        alt="FAQ"
+        className="metric-card-img"
+      />
       <div className="metric-card-content">
         <div className="metric-card-title">Domande più frequenti</div>
         <div className="metric-card-subtitle">Ultimi 30 giorni</div>
@@ -289,6 +296,12 @@ function FaqCard({ faqs }: { faqs: Faq[] }) {
             </li>
           ))}
         </ul>
+
+        {tips && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 6 }}>
+            {tips}
+          </div>
+        )}
       </div>
     </div>
   );
