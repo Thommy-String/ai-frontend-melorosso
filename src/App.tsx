@@ -1,7 +1,9 @@
+// App.tsx ------------------------------------------------------------
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import Login       from './pages/Login';
-import Dashboard   from './pages/Dashboard';
-import ChatWidget  from './ChatWidget';
+import Login        from './pages/Login';
+import Dashboard    from './pages/Dashboard';
+import InsightsPage from './pages/Insights';  
+import ChatWidget   from './ChatWidget';
 
 /* ------ tema per singolo client ----------------------------------- */
 const brand = (slug: string) => ({
@@ -21,19 +23,19 @@ const brand = (slug: string) => ({
   start  : 'Scrivi…'
 });
 
-/* ------ piccolo helper per estrarre slug dal token ---------------- */
+/* ------ piccolo helper -------------------------------------------- */
 function getSlugFromToken(): string | null {
   try {
-    const t = localStorage.getItem('jwt') ?? '';
-    const base64 = t.split('.')[1];
-    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const t       = localStorage.getItem('jwt') ?? '';
+    const base64  = t.split('.')[1];
+    const padded  = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
     return JSON.parse(atob(padded)).slug ?? null;
   } catch {
     return null;
   }
 }
 
-/* ------ wrapper /chat/:slug -------------------------------------- */
+/* ------ wrapper /chat/:slug --------------------------------------- */
 function ChatRoute() {
   const { slug = 'barilla' } = useParams();
   const { accent, logoUrl, start } = brand(slug);
@@ -56,12 +58,17 @@ export default function App() {
   return (
     <Router>
       <Routes>
+
         {/* login pubblico */}
         <Route path="/login" element={<Login />} />
 
         {/* dashboard protetta */}
         <Route path="/dashboard/:slug"
                element={ token ? <Dashboard /> : <Navigate to="/login" replace /> } />
+
+        {/* insights protetti  🔸  NEW */}
+        <Route path="/insights/:slug"
+               element={ token ? <InsightsPage /> : <Navigate to="/login" replace /> } />
 
         {/* widget protetto */}
         <Route path="/chat/:slug"
@@ -71,9 +78,10 @@ export default function App() {
         <Route path="*"
                element={
                  token && slug
-                   ? <Navigate to={`dashboard/${slug}`} replace />
+                   ? <Navigate to={`/dashboard/${slug}`} replace />  
                    : <Navigate to="/login" replace />
                }/>
+
       </Routes>
     </Router>
   );

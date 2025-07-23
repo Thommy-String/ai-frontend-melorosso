@@ -162,7 +162,7 @@ useEffect(() => {
 
         {/* ---- NUOVA CARD FAQ ---- */}
   {faqs.length > 0 && (
-  <FaqCard faqs={faqs.slice(0, 5).map(f => ({ question: f.q, count: f.count }))} tips={tips} />
+  <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
 )}
         
       </div>
