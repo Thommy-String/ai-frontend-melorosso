@@ -20,6 +20,11 @@ interface Message {
   created_at: string;
 }
 
+interface UsageRow {
+  yyyymm: number;
+  tokens: number | null;
+}
+
 // URL base per le immagini placeholder di Lorem Picsum
 // Possiamo generare immagini uniche usando un ID alla fine: https://picsum.photos/id/ID/SIZE
 const LOREM_PICSUM_BASE_URL = 'https://picsum.photos/id/';
@@ -30,6 +35,8 @@ export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
 
+  const [monthTokens, setMonthTokens] = useState(0);
+  const [prevMonthTokens, setPrevMonthTokens] = useState(0);
   const [active, setAct] = useState(0);
   const [msgs, setMsgs] = useState(0);
   const [avgRes, setAvg] = useState(0);
@@ -66,6 +73,21 @@ export default function Dashboard() {
         setMsgs(statsData.totalMessages);
         setAvg(statsData.avg_response || statsData.avgResponse || 0);
         setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+
+
+        /* ---------- consumo token mese in corso / mese precedente --------- */
+        const now = new Date();
+        const yyyymmNow = now.getFullYear() * 100 + (now.getMonth() + 1);
+        const yyyymmPrev = now.getMonth() === 0
+          ? (now.getFullYear() - 1) * 100 + 12
+          : now.getFullYear() * 100 + now.getMonth();
+
+        const usageArr: UsageRow[] = statsData.usage ?? [];
+        const currRow = usageArr.find(u => u.yyyymm === yyyymmNow);
+        const prevRow = usageArr.find(u => u.yyyymm === yyyymmPrev);
+
+        setMonthTokens(Number(currRow?.tokens || 0));
+        setPrevMonthTokens(Number(prevRow?.tokens || 0));
 
         // Assegna un'immagine placeholder unica a ciascuna sessione
         // Usiamo l'indice della sessione modulato da MAX_PICSUM_ID per ciclare le immagini disponibili,
@@ -134,6 +156,15 @@ export default function Dashboard() {
           value={sessionsCount}
           description="Totale delle conversazioni avviate con il chatbot."
         />
+
+        {/* ► nuova card: consumo token mese corrente */}
+        <MetricCard
+          img="https://static.thenounproject.com/png/1069808-200.png"
+          title="Token consumati"
+          subtitle={`Mese corrente`}
+          value={monthTokens}
+          description={`Mese precedente: ${prevMonthTokens.toLocaleString()} token`}
+        />
       </div>
 
       <div className={`chat-section-container ${selectedSessionId ? 'chat-open' : ''}`}>
@@ -159,6 +190,13 @@ export default function Dashboard() {
                       <span className="chat-list-item-id">...{s.session_id.slice(-8)}</span>
                       <span className="chat-list-item-time">
                         {new Date(s.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <small className="chat-list-item-date">
+                          {new Date(s.updated_at).toLocaleDateString([], {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </small>
                       </span>
                     </div>
                     <div className="chat-list-item-preview">
