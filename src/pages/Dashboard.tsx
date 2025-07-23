@@ -1,6 +1,6 @@
 // src/pages/Dashboard.tsx
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import './Dashboard.css';
 
 const API = 'https://ai-backend-melorosso.onrender.com';
@@ -79,6 +79,7 @@ export default function Dashboard() {
         const sessionsData = await sessionsRes.json() as Session[];
         const faqData = await faqRes.json();
         const insightsData = await insRes.json();
+        setInsights(insightsData.insights ?? []);
 
         /* --- metriche --------------------------------------------------- */
         setMonthTokens(Number(statsData.monthTokens || 0));

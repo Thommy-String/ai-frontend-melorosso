@@ -2,7 +2,7 @@
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Login        from './pages/Login';
 import Dashboard    from './pages/Dashboard';
-import InsightsPage from './pages/Insights';  
+import Insights from './pages/Insights';  
 import ChatWidget   from './ChatWidget';
 
 /* ------ tema per singolo client ----------------------------------- */
@@ -68,7 +68,7 @@ export default function App() {
 
         {/* insights protetti  🔸  NEW */}
         <Route path="/insights/:slug"
-               element={ token ? <InsightsPage /> : <Navigate to="/login" replace /> } />
+               element={ token ? <Insights /> : <Navigate to="/login" replace /> } />
 
         {/* widget protetto */}
         <Route path="/chat/:slug"
