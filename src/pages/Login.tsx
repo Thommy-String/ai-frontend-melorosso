@@ -2,16 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
-/* -------------------------------------------------------------- */
-/*  helper: decode JWT (parte payload)                            */
-/* -------------------------------------------------------------- */
+/* ---------------------------------------------------- */
+/*  JWT helper (base64url → JSON)                       */
+/* ---------------------------------------------------- */
 function parseJwt(token: string) {
   try {
-    const payload = token.split('.')[1];              // parte centrale
-    const padded  = payload.padEnd(
-      payload.length + (4 - (payload.length % 4)) % 4,
-      '='
-    );                                                // aggiungi padding =
+    const [, payload] = token.split('.');
+    const padded  = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
     const base64  = padded.replace(/-/g, '+').replace(/_/g, '/');
     return JSON.parse(atob(base64));
   } catch {
@@ -19,21 +16,20 @@ function parseJwt(token: string) {
   }
 }
 
-/* =============================================================== */
+/* ==================================================== */
 export default function Login() {
   const nav = useNavigate();
 
-  /* stato form */
-  const [email,     setEmail]     = useState('');
-  const [password,  setPassword]  = useState('');
-  const [loading,   setLoading]   = useState(false);
-  const [errorMsg,  setErrorMsg]  = useState('');
+  const [email,     setEmail]    = useState('');
+  const [password,  setPwd]      = useState('');
+  const [loading,   setLoad]     = useState(false);
+  const [errMsg,    setErr]      = useState('');
 
-  /* -------------------------------------------------------------- */
+  /* -------------------------------------------------- */
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg('');
-    setLoading(true);
+    setErr('');
+    setLoad(true);
 
     try {
       const res = await fetch(
@@ -45,26 +41,30 @@ export default function Login() {
         }
       );
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Credenziali non valide');
+      const { token, error } = await res.json();
+      if (!res.ok) throw new Error(error || 'Credenziali non valide');
 
-      const { token } = data as { token: string };
       localStorage.setItem('jwt', token);
 
-      const slug = parseJwt(token)?.slug;
-      if (!slug) throw new Error('Token non valido');
+      /* ---------- slug dal JWT ---------- */
+      const payload = parseJwt(token);
+      const slug    = payload?.slug as string | undefined;
+      console.log('[login] decoded slug ⇒', slug);
 
-      /* redirect assoluto (con / all’inizio) */
+      if (!slug) throw new Error('Token privo di slug');
+
+      /* ---------- redirect dashboard ---- */
       nav(`/dashboard/${slug}`, { replace: true });
+      console.log('[login] redirect verso /dashboard/'+slug);
 
-    } catch (err) {
-      setErrorMsg((err as Error).message || 'Errore di autenticazione');
+    } catch (e) {
+      setErr((e as Error).message || 'Errore di autenticazione');
     } finally {
-      setLoading(false);
+      setLoad(false);
     }
   };
 
-  /* -------------------------------------------------------------- */
+  /* -------------------------------------------------- */
   return (
     <div className="login-bg">
       <div className="login-card">
@@ -80,7 +80,7 @@ export default function Login() {
         <h2 className="login-title">Accedi a Melorosso</h2>
         <p className="login-desc">Inserisci le credenziali fornite da Melorosso</p>
 
-        {errorMsg && <div className="login-error">{errorMsg}</div>}
+        {errMsg && <div className="login-error">{errMsg}</div>}
 
         <form onSubmit={onSubmit} className="login-form">
           <div>
@@ -88,7 +88,6 @@ export default function Login() {
             <input
               id="email"
               type="email"
-              autoComplete="email"
               className="login-input"
               placeholder="tuo@esempio.com"
               value={email}
@@ -103,11 +102,10 @@ export default function Login() {
             <input
               id="password"
               type="password"
-              autoComplete="current-password"
               className="login-input"
               placeholder="Password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={e => setPwd(e.target.value)}
               required
               disabled={loading}
             />
