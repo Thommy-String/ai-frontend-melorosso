@@ -25,10 +25,7 @@ interface UsageRow {
   tokens: number | null;
 }
 
-interface FAQ {              
-  q: string;                 
-  count: number;             
-}
+interface Faq { question: string; count: number }
 
 
 
@@ -79,14 +76,13 @@ useEffect(() => {
     /* --- metriche --------------------------------------------------- */
     setMonthTokens(    Number(statsData.monthTokens     || 0));
     setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
-
     setAct(statsData.active);
     setMsgs(statsData.totalMessages);
     setAvg(statsData.avg_response || statsData.avgResponse || 0);
     setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
 
     /* --- FAQ -------------------------------------------------------- */
-    setFaqs(faqData.faqs ?? []);          // ✅ UNA sola chiamata
+    setFaqs(faqData.faqs ?? []);          
 
     /* --- avatar placeholder ---------------------------------------- */
     const sessionsWithAvatars = sessionsData.map((s, idx) => {
