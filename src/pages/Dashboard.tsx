@@ -27,6 +27,14 @@ interface UsageRow {
 
 interface Faq { question: string; count: number }
 
+/* ------- tipi & stato ------------------------------------------- */
+interface Insight {
+  title: string;     // es. "Dubbi ricorrenti sui prezzi"
+  body : string;     // testo descrittivo
+}
+
+const [insights, setInsights] = useState<Insight[]>([]);   // <— nuovo
+
 
 
 // URL base per le immagini placeholder di Lorem Picsum
@@ -62,10 +70,11 @@ useEffect(() => {
   Promise.all([
     fetch(`${API}/stats/${slug}`,          { headers }),             
     fetch(`${API}/stats/sessions/${slug}`, { headers }),             
-    fetch(`${API}/stats/faq/${slug}?days=30`, { headers })           
+    fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+    fetch(`${API}/stats/insights/${slug}?days=30`, { headers })           
   ])
-  .then(async ([statsRes, sessionsRes, faqRes]) => {
-    if ([statsRes, sessionsRes, faqRes].some(r => r.status === 401 || r.status === 403)) {
+  .then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
+    if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
       nav('/login'); return;
     }
 
@@ -73,6 +82,7 @@ useEffect(() => {
     const statsData    = await statsRes.json();
     const sessionsData = await sessionsRes.json() as Session[];
     const faqData      = await faqRes.json();
+    const insightsData = await insRes.json();
 
     /* --- metriche --------------------------------------------------- */
     setMonthTokens(    Number(statsData.monthTokens     || 0));
@@ -81,6 +91,7 @@ useEffect(() => {
     setMsgs(statsData.totalMessages);
     setAvg(statsData.avg_response || statsData.avgResponse || 0);
     setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+    setInsights(insightsData.insights ?? []);
 
     /* --- FAQ -------------------------------------------------------- */
     setFaqs(faqData.faqs ?? []); 
@@ -301,6 +312,33 @@ function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
             {tips}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function InsightsCard({ insights }: { insights: Insight[] }) {
+  if (!insights.length) return null;
+
+  return (
+    <div className="metric-card insights-card">
+      <img
+        src="https://static.thenounproject.com/png/2230962-200.png"
+        alt="Insights"
+        className="metric-card-img"
+      />
+      <div className="metric-card-content">
+        <div className="metric-card-title">Analisi conversazioni</div>
+        <div className="metric-card-subtitle">Ultimi 30 giorni</div>
+
+        {insights.slice(0, 3).map(ins => (
+          <details key={ins.title} style={{ margin: '6px 0' }}>
+            <summary style={{ cursor: 'pointer' }}>{ins.title}</summary>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              {ins.body}
+            </p>
+          </details>
+        ))}
       </div>
     </div>
   );
