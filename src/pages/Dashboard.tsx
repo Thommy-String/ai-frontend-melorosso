@@ -41,7 +41,6 @@ const MAX_PICSUM_ID = 1000; // Il numero massimo di ID disponibili su Picsum Pho
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
-  const [faqs, setFaqs] = useState<FAQ[]>([]);  
   const [monthTokens, setMonthTokens] = useState(0);
   const [prevMonthTokens, setPrevMonthTokens] = useState(0);
   const [active, setAct] = useState(0);
@@ -49,6 +48,7 @@ export default function Dashboard() {
   const [avgRes, setAvg] = useState(0);
   const [sessionsCount, setSessionsCount] = useState(0);
 
+  const [faqs, setFaqs] = useState<{ q: string; count: number }[]>([]);
   const [sessionsList, setSessionsList] = useState<Session[]>([]
   );
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -62,31 +62,33 @@ useEffect(() => {
   const headers = { Authorization: `Bearer ${token}` };
 
   Promise.all([
-    fetch(`${API}/stats/${slug}`,          { headers }),
-    fetch(`${API}/stats/sessions/${slug}`, { headers }),
-    fetch(`${API}/stats/faq/${slug}?days=30`, { headers })
+    fetch(`${API}/stats/${slug}`,          { headers }),             
+    fetch(`${API}/stats/sessions/${slug}`, { headers }),             
+    fetch(`${API}/stats/faq/${slug}?days=30`, { headers })           
   ])
   .then(async ([statsRes, sessionsRes, faqRes]) => {
-    if ([statsRes, sessionsRes].some(r => r.status === 401 || r.status === 403)) {
+    if ([statsRes, sessionsRes, faqRes].some(r => r.status === 401 || r.status === 403)) {
       nav('/login'); return;
     }
 
-    const statsData     = await statsRes.json();
-    const sessionsData  = await sessionsRes.json() as Session[];
+    /* --- deserialize ------------------------------------------------ */
+    const statsData    = await statsRes.json();
+    const sessionsData = await sessionsRes.json() as Session[];
     const faqData      = await faqRes.json();
 
-    /* token mese corrente / precedente                   */
+    /* --- metriche --------------------------------------------------- */
     setMonthTokens(    Number(statsData.monthTokens     || 0));
     setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
 
-    /* altre metriche                                     */
     setAct(statsData.active);
     setMsgs(statsData.totalMessages);
     setAvg(statsData.avg_response || statsData.avgResponse || 0);
     setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
-    setFaqs(faqData.faqs || []); 
 
-    /* avatar placeholder …                               */
+    /* --- FAQ -------------------------------------------------------- */
+    setFaqs(faqData.faqs ?? []);          // ✅ UNA sola chiamata
+
+    /* --- avatar placeholder ---------------------------------------- */
     const sessionsWithAvatars = sessionsData.map((s, idx) => {
       const id = (idx % (MAX_PICSUM_ID - 50)) + 50;
       return { ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${id}/${AVATAR_SIZE}` };

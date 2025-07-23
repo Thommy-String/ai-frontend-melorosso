@@ -422,6 +422,10 @@ body {
   }
 }
 
+.faq-card ul { list-style:none;padding:0;margin:10px 0 0 0;}
+.faq-q     { font-size:.9rem; }
+.faq-count { float:right;font-weight:600;color:var(--accent); }
+
 /* Regolazione per schermi molto piccoli */
 @media (max-width: 480px) {
   .chat-list-item {
