@@ -79,7 +79,7 @@ export default function Dashboard() {
         const sessionsData = await sessionsRes.json() as Session[];
         const faqData = await faqRes.json();
         const insightsData = await insRes.json();
-        setInsights(insightsData.insights ?? []);
+
 
         /* --- metriche --------------------------------------------------- */
         setMonthTokens(Number(statsData.monthTokens || 0));
@@ -187,8 +187,10 @@ export default function Dashboard() {
         )}
 
         {/* INSIGHTS */}
-        {insights.length > 0 && <InsightsCard insights={insights} />}
-        
+        + {insights.length > 0 && (
+          <InsightsCard insights={insights} slug={slug!} />   // slug non-null
+        )}
+
 
 
       </div>
@@ -332,7 +334,9 @@ function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   );
 }
 
-function InsightsCard({ insights }: { insights: Insight[] }) {
+function InsightsCard(
+  { insights, slug }: { insights: Insight[]; slug: string }
+) {
   if (!insights.length) return null;
 
   return (
@@ -342,18 +346,27 @@ function InsightsCard({ insights }: { insights: Insight[] }) {
         alt="Insights"
         className="metric-card-img"
       />
+
       <div className="metric-card-content">
         <div className="metric-card-title">Analisi conversazioni</div>
         <div className="metric-card-subtitle">Ultimi 30 giorni</div>
 
-        {insights.slice(0, 3).map(ins => (
-          <details key={ins.title} style={{ margin: '6px 0' }}>
-            <summary style={{ cursor: 'pointer' }}>{ins.title}</summary>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {ins.body}
-            </p>
-          </details>
-        ))}
+        {/* anteprima: primi 3 elementi */}
+        <ul style={{ paddingLeft: 18, margin: '8px 0' }}>
+          {insights.slice(0, 3).map(ins => (
+            <li key={ins.body} style={{ fontSize: '.85rem', marginBottom: 4 }}>
+              <strong>{ins.title}:</strong> {ins.body}
+            </li>
+          ))}
+        </ul>
+
+        {/* link alla pagina completa */}
+        <Link
+          to={`/insights/${slug}`}
+          style={{ fontSize: '.8rem', color: 'var(--accent)' }}
+        >
+          Leggi tutte le analisi →
+        </Link>
       </div>
     </div>
   );
