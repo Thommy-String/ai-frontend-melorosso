@@ -157,13 +157,13 @@ export default function Dashboard() {
           description="Totale delle conversazioni avviate con il chatbot."
         />
 
-        {/* ► nuova card: consumo token mese corrente */}
+
         <MetricCard
-          img="https://static.thenounproject.com/png/1069808-200.png"
-          title="Token consumati"
-          subtitle={`Mese corrente`}
+          img="https://static.thenounproject.com/png/6203007-200.png"
+          title="Token mese corrente"
+          subtitle={new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' })}
           value={monthTokens}
-          description={`Mese precedente: ${prevMonthTokens.toLocaleString()} token`}
+          description={`Mese scorso: ${prevMonthTokens.toLocaleString()} token`}
         />
       </div>
 
