@@ -1,33 +1,41 @@
-// src/App.tsx
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import Login      from './pages/Login';
-import Dashboard  from './pages/Dashboard';
-import ChatWidget from './ChatWidget';     // il componente white-label
+import Login       from './pages/Login';
+import Dashboard   from './pages/Dashboard';
+import ChatWidget  from './ChatWidget';
 
-/* ---------- helper: sceglie look per slug ------------------ */
-const brand = (slug:string) => {
-  switch (slug) {
-    case 'barilla': return {
-      accent : '#0057B7',
-      logoUrl: 'https://www.barilla.com/favicon.ico',
-      start  : 'Chiedimi tutto su Barilla…'
-    };
-    case 'custom-light-garage': return {
-      accent : '#FF4E00',
-      logoUrl: '/clg_logo.svg',
-      start  : 'Cosa vuoi illuminare oggi?'
-    };
-    default: return {
-      accent : '#3b82f6',
-      logoUrl: '/bot.png',
-      start  : 'Scrivi…'
-    };
+/* ------ tema per singolo client ----------------------------------- */
+const brand = (slug: string) => ({
+  barilla: {
+    accent : '#0057B7',
+    logoUrl: 'https://www.barilla.com/favicon.ico',
+    start  : 'Chiedimi tutto su Barilla…'
+  },
+  'custom-light-garage': {
+    accent : '#FF4E00',
+    logoUrl: '/clg_logo.svg',
+    start  : 'Cosa vuoi illuminare oggi?'
   }
-};
+}[slug] ?? {
+  accent : '#3b82f6',
+  logoUrl: '/bot.png',
+  start  : 'Scrivi…'
+});
 
-/* ---------- wrapper rotta /chat/:slug ----------------------- */
+/* ------ piccolo helper per estrarre slug dal token ---------------- */
+function getSlugFromToken(): string | null {
+  try {
+    const t = localStorage.getItem('jwt') ?? '';
+    const base64 = t.split('.')[1];
+    const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    return JSON.parse(atob(padded)).slug ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/* ------ wrapper /chat/:slug -------------------------------------- */
 function ChatRoute() {
-  const { slug = 'barilla' } = useParams();      // fallback
+  const { slug = 'barilla' } = useParams();
   const { accent, logoUrl, start } = brand(slug);
   return (
     <ChatWidget
@@ -35,31 +43,37 @@ function ChatRoute() {
       accent={accent}
       logoUrl={logoUrl}
       startText={start}
-      floating={false}          // o true se vuoi la bolla
+      floating={false}
     />
   );
 }
 
-/* ====================== App ================================ */
+/* ========================== APP =================================== */
 export default function App() {
-  const token = localStorage.getItem('jwt');      // auth molto semplice
+  const token = localStorage.getItem('jwt');
+  const slug  = token ? getSlugFromToken() : null;
 
   return (
     <Router>
       <Routes>
-
+        {/* login pubblico */}
         <Route path="/login" element={<Login />} />
 
-         <Route path="/dashboard/:slug"
-        element={ token ? <Dashboard/> : <Navigate to="/login" replace/> } />
+        {/* dashboard protetta */}
+        <Route path="/dashboard/:slug"
+               element={ token ? <Dashboard /> : <Navigate to="/login" replace /> } />
 
-        {/*  ⚡️ multi-cliente: /#/chat/barilla oppure /#/chat/custom-light-garage  */}
+        {/* widget protetto */}
         <Route path="/chat/:slug"
-               element={ token ? <ChatRoute/> : <Navigate to="/login" replace/> } />
+               element={ token ? <ChatRoute /> : <Navigate to="/login" replace /> } />
 
         {/* fallback */}
         <Route path="*"
-               element={<Navigate to={ token ? '/dashboard' : '/login' } replace/>}/>
+               element={
+                 token && slug
+                   ? <Navigate to={`dashboard/${slug}`} replace />
+                   : <Navigate to="/login" replace />
+               }/>
       </Routes>
     </Router>
   );
