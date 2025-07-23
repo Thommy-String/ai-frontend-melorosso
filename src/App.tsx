@@ -4,6 +4,8 @@ import Login        from './pages/Login';
 import Dashboard    from './pages/Dashboard';
 import Insights from './pages/Insights';  
 import ChatWidget   from './ChatWidget';
+import { useEffect } from 'react';
+import { useState } from 'react';
 
 /* ------ tema per singolo client ----------------------------------- */
 const brand = (slug: string) => ({
@@ -52,8 +54,15 @@ function ChatRoute() {
 
 /* ========================== APP =================================== */
 export default function App() {
-  const token = localStorage.getItem('jwt');
-  const slug  = token ? getSlugFromToken() : null;
+   const [token, setToken] = useState(() => localStorage.getItem('jwt'));
+ const slug = token ? getSlugFromToken() : null;
+
+ // ascolta modifiche a localStorage (login in un’altra tab, logout, …)
+ useEffect(() => {
+   const onStorage = () => setToken(localStorage.getItem('jwt'));
+   window.addEventListener('storage', onStorage);
+   return () => window.removeEventListener('storage', onStorage);
+ }, []);
 
   return (
     <Router>

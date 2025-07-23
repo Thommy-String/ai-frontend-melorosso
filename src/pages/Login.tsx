@@ -8,8 +8,8 @@ import './Login.css';
 function parseJwt(token: string) {
   try {
     const [, payload] = token.split('.');
-    const padded  = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
-    const base64  = padded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
+    const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
     return JSON.parse(atob(base64));
   } catch {
     return null;
@@ -20,10 +20,10 @@ function parseJwt(token: string) {
 export default function Login() {
   const nav = useNavigate();
 
-  const [email,     setEmail]    = useState('');
-  const [password,  setPwd]      = useState('');
-  const [loading,   setLoad]     = useState(false);
-  const [errMsg,    setErr]      = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPwd] = useState('');
+  const [loading, setLoad] = useState(false);
+  const [errMsg, setErr] = useState('');
 
   /* -------------------------------------------------- */
   const onSubmit = async (e: React.FormEvent) => {
@@ -35,9 +35,9 @@ export default function Login() {
       const res = await fetch(
         'https://ai-backend-melorosso.onrender.com/auth/login',
         {
-          method : 'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({ email, password })
+          body: JSON.stringify({ email, password })
         }
       );
 
@@ -48,13 +48,22 @@ export default function Login() {
 
       /* ---------- slug dal JWT ---------- */
       const payload = parseJwt(token);
-      const slug    = payload?.slug as string | undefined;
+      const slug = payload?.slug as string | undefined;
       console.log('[login] decoded slug ⇒', slug);
 
       if (!slug) throw new Error('Token privo di slug');
 
-      /* ---------- redirect dashboard ---- */
-      window.location.href = `${window.location.origin}/#/dashboard/${slug}`;
+      /* ---------- redirect dashboard (qualsiasi host / preview) ---- */
+      const target = `#/dashboard/${slug}`;
+
+      // 1️⃣ prova soft: SPA navigation → funzioni locali / dev
+      try {
+        // evita crash se non siamo dentro un router ancora montato
+        nav(target, { replace: true });
+      } catch { /* ignore */ }
+
+      // 2️⃣ hard-reload: garantito in Safari / incognito / preview
+      window.location.replace(`${window.location.origin}/${target}`);
 
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
