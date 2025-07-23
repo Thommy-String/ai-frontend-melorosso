@@ -94,7 +94,15 @@ export default function Dashboard() {
         setTips(faqData.tips ?? '');
 
         /*Insights */
-        setInsights(insightsData.insights ?? []);
+        const parsedInsights: Insight[] = [
+          ...(insightsData.bullets ?? []).map((b: string) => ({
+            title: 'Insight', body: b
+          })),
+          ...(insightsData.actions ?? []).map((a: string) => ({
+            title: 'Azione consigliata', body: a
+          }))
+        ];
+        setInsights(parsedInsights);
 
         /* --- avatar placeholder ---------------------------------------- */
         const sessionsWithAvatars = sessionsData.map((s, idx) => {
@@ -177,6 +185,7 @@ export default function Dashboard() {
 
         {/* INSIGHTS */}
         {insights.length > 0 && <InsightsCard insights={insights} />}
+        
 
 
       </div>
