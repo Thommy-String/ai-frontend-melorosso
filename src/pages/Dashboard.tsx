@@ -93,6 +93,7 @@ export default function Dashboard() {
         setFaqs(faqData.faqs ?? []);
         setTips(faqData.tips ?? '');
 
+        console.log('[raw] insightsData ⇒', insightsData);
         /*Insights */
         const parsedInsights: Insight[] = [
           ...(insightsData.bullets ?? []).map((b: string) => ({
@@ -102,6 +103,7 @@ export default function Dashboard() {
             title: 'Azione consigliata', body: a
           }))
         ];
+        console.log('[parsed] insights ⇒', parsedInsights);
         setInsights(parsedInsights);
 
         /* --- avatar placeholder ---------------------------------------- */
