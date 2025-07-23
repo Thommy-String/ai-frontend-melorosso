@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
+  const [insightPreview, setInsightPreview] = useState('');
 
 
   useEffect(() => {
@@ -79,6 +80,14 @@ export default function Dashboard() {
         const sessionsData = await sessionsRes.json() as Session[];
         const faqData = await faqRes.json();
         const insightsData = await insRes.json();
+
+        /* --------- insight preview + parsing ---------- */
+        const { summary = '', bullets = [], actions = [] } = insightsData;
+
+        // una riga di anteprima max 120 caratteri
+        const preview = summary.slice(0, 120) + (summary.length > 120 ? '…' : '');
+        setInsightPreview(preview);
+
 
 
         /* --- metriche --------------------------------------------------- */
@@ -187,8 +196,8 @@ export default function Dashboard() {
         )}
 
         {/* INSIGHTS */}
-        + {insights.length > 0 && (
-          <InsightsCard insights={insights} slug={slug!} />   // slug non-null
+        {insightPreview && (
+          <InsightsCard preview={insightPreview} slug={slug!} />
         )}
 
 
@@ -335,36 +344,19 @@ function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
 }
 
 function InsightsCard(
-  { insights, slug }: { insights: Insight[]; slug: string }
+  { preview, slug }: { preview: string; slug: string }
 ) {
-  if (!insights.length) return null;
-
   return (
     <div className="metric-card insights-card">
-      <img
-        src="https://static.thenounproject.com/png/2230962-200.png"
-        alt="Insights"
-        className="metric-card-img"
-      />
+      <img src="https://static.thenounproject.com/png/2230962-200.png"
+           alt="Insights" className="metric-card-img" />
 
       <div className="metric-card-content">
         <div className="metric-card-title">Analisi conversazioni</div>
-        <div className="metric-card-subtitle">Ultimi 30 giorni</div>
+        <p style={{ fontSize: '.85rem', margin: '8px 0' }}>{preview}</p>
 
-        {/* anteprima: primi 3 elementi */}
-        <ul style={{ paddingLeft: 18, margin: '8px 0' }}>
-          {insights.slice(0, 3).map(ins => (
-            <li key={ins.body} style={{ fontSize: '.85rem', marginBottom: 4 }}>
-              <strong>{ins.title}:</strong> {ins.body}
-            </li>
-          ))}
-        </ul>
-
-        {/* link alla pagina completa */}
-        <Link
-          to={`/insights/${slug}`}
-          style={{ fontSize: '.8rem', color: 'var(--accent)' }}
-        >
+        <Link to={`/insights/${slug}`}
+              style={{ fontSize: '.8rem', color: 'var(--accent)' }}>
           Leggi tutte le analisi →
         </Link>
       </div>
