@@ -30,7 +30,7 @@ interface FAQ {
   count: number;             
 }
 
-const [faqs, setFaqs] = useState<FAQ[]>([]);  
+
 
 // URL base per le immagini placeholder di Lorem Picsum
 // Possiamo generare immagini uniche usando un ID alla fine: https://picsum.photos/id/ID/SIZE
@@ -41,7 +41,7 @@ const MAX_PICSUM_ID = 1000; // Il numero massimo di ID disponibili su Picsum Pho
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
-
+  const [faqs, setFaqs] = useState<FAQ[]>([]);  
   const [monthTokens, setMonthTokens] = useState(0);
   const [prevMonthTokens, setPrevMonthTokens] = useState(0);
   const [active, setAct] = useState(0);
