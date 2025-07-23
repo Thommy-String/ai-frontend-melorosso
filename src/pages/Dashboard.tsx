@@ -162,7 +162,7 @@ useEffect(() => {
 
         {/* ---- NUOVA CARD FAQ ---- */}
   {faqs.length > 0 && (
-  <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
+  <FaqCard faqs={faqs.slice(0, 5).map(f => ({ question: f.q, count: f.count }))} tips={tips} />
 )}
         
       </div>
@@ -275,7 +275,6 @@ function MetricCard({
 }
 
 
-// 👇 FaqCard (rimpiazza quello esistente)
 function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   return (
     <div className="metric-card">
