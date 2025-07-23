@@ -45,6 +45,7 @@ export default function Login() {
       if (!res.ok) throw new Error(error || 'Credenziali non valide');
 
       localStorage.setItem('jwt', token);
+      sessionStorage.setItem('jwt', token);
 
       /* ---------- slug dal JWT ---------- */
       const payload = parseJwt(token);
