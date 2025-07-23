@@ -54,8 +54,7 @@ export default function Login() {
       if (!slug) throw new Error('Token privo di slug');
 
       /* ---------- redirect dashboard ---- */
-      nav(`/dashboard/${slug}`, { replace: true });
-      console.log('[login] redirect verso /dashboard/'+slug);
+      window.location.replace(`#/dashboard/${slug}`);
 
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
