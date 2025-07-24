@@ -56,6 +56,8 @@ export default function Dashboard() {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightPreview, setInsightPreview] = useState('');
+  const [chatMonth, setChatMonth] = useState('');   // es. "12/60"
+  const [chatPct, setChatPct] = useState(0);    // es. 20 (%)
 
 
   useEffect(() => {
@@ -63,6 +65,15 @@ export default function Dashboard() {
     if (!token || !slug) { nav('/login'); return; }
 
     const headers = { Authorization: `Bearer ${token}` };
+
+    /* recupero subscription in parallelo */
+    fetch(`${API}/stats/subscription/${slug}`, { headers })
+      .then(r => r.json())
+      .then(subData => {
+        setChatMonth(`${subData.chats_used}/${subData.monthly_quota}`);
+        setChatPct(subData.pct_used);               // 0-100
+      })
+      .catch(console.error);
 
     Promise.all([
       fetch(`${API}/stats/${slug}`, { headers }),
@@ -74,6 +85,7 @@ export default function Dashboard() {
         if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
           nav('/login'); return;
         }
+
 
         /* --- deserialize ------------------------------------------------ */
         const statsData = await statsRes.json();
@@ -203,6 +215,16 @@ export default function Dashboard() {
           description={`Mese scorso: ${prevMonthTokens.toLocaleString()} token`}
         />
 
+        {chatMonth && (
+          <MetricCard
+            img="https://static.thenounproject.com/png/6203007-200.png"
+            title="Chat mese corrente"
+            subtitle={`${chatPct}% del limite`}
+            value={chatMonth}          // es. "23/60"
+            description="Si azzera al rinnovo"
+          />
+        )}
+
         {/* ---- CARD FAQ ---- */}
         {faqs.length > 0 && (
           <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
@@ -309,7 +331,7 @@ function MetricCard({
   title: string;
   subtitle: string;
   description: string;
-  value: number;
+  value: number | string;
 }) {
   return (
     <div className="metric-card">
