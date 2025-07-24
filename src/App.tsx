@@ -1,13 +1,13 @@
 // App.tsx ------------------------------------------------------------
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import Login        from './pages/Login';
-import Dashboard    from './pages/Dashboard';
-import Insights from './pages/Insights';  
-import ChatWidget   from './ChatWidget';
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-/* ------ tema per singolo client ----------------------------------- */
+import Login      from './pages/Login';
+import Dashboard  from './pages/Dashboard';
+import Insights   from './pages/Insights';
+import ChatWidget from './ChatWidget';
+
+/* ---------- tema per singolo client ------------------------------ */
 const brand = (slug: string) => ({
   barilla: {
     accent : '#0057B7',
@@ -25,19 +25,19 @@ const brand = (slug: string) => ({
   start  : 'Scrivi…'
 });
 
-/* ------ piccolo helper -------------------------------------------- */
-function getSlugFromToken(): string | null {
+/* ---------- helper: slug dal JWT --------------------------------- */
+function getSlugFromToken(tok?: string | null): string | null {
+  if (!tok) return null;
   try {
-    const t       = localStorage.getItem('jwt') ?? '';
-    const base64  = t.split('.')[1];
-    const padded  = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+    const [, p]   = tok.split('.');
+    const padded  = p.padEnd(p.length + (4 - p.length % 4) % 4, '=');
     return JSON.parse(atob(padded)).slug ?? null;
   } catch {
     return null;
   }
 }
 
-/* ------ wrapper /chat/:slug --------------------------------------- */
+/* ---------- wrapper /chat/:slug ---------------------------------- */
 function ChatRoute() {
   const { slug = 'barilla' } = useParams();
   const { accent, logoUrl, start } = brand(slug);
@@ -52,45 +52,55 @@ function ChatRoute() {
   );
 }
 
-/* ========================== APP =================================== */
+/* =========================== APP ================================= */
 export default function App() {
-   const [token, setToken] = useState(() => localStorage.getItem('jwt'));
- const slug = token ? getSlugFromToken() : null;
+  /* leggere il token (può trovarsi su localStorage o sessionStorage) */
+  const readTok = () =>
+    localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
 
- // ascolta modifiche a localStorage (login in un’altra tab, logout, …)
- useEffect(() => {
-   const onStorage = () => setToken(localStorage.getItem('jwt'));
-   window.addEventListener('storage', onStorage);
-   return () => window.removeEventListener('storage', onStorage);
- }, []);
+  const [token, setToken] = useState<string | null>(readTok); // stato reattivo
+  const slug = getSlugFromToken(token);
+
+  /*  si aggiorna quando il login avviene da questa o da un’altra tab  */
+  useEffect(() => {
+    const onStorage = () => setToken(readTok());
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   return (
     <Router>
       <Routes>
-
         {/* login pubblico */}
         <Route path="/login" element={<Login />} />
 
         {/* dashboard protetta */}
-        <Route path="/dashboard/:slug"
-               element={ token ? <Dashboard /> : <Navigate to="/login" replace /> } />
+        <Route
+          path="/dashboard/:slug"
+          element={ token ? <Dashboard /> : <Navigate to="/login" replace /> }
+        />
 
-        {/* insights protetti  🔸  NEW */}
-        <Route path="/insights/:slug"
-               element={ token ? <Insights /> : <Navigate to="/login" replace /> } />
+        {/* insights protetti */}
+        <Route
+          path="/insights/:slug"
+          element={ token ? <Insights /> : <Navigate to="/login" replace /> }
+        />
 
         {/* widget protetto */}
-        <Route path="/chat/:slug"
-               element={ token ? <ChatRoute /> : <Navigate to="/login" replace /> } />
+        <Route
+          path="/chat/:slug"
+          element={ token ? <ChatRoute /> : <Navigate to="/login" replace /> }
+        />
 
-        {/* fallback */}
-        <Route path="*"
-               element={
-                 token && slug
-                   ? <Navigate to={`/dashboard/${slug}`} replace />  
-                   : <Navigate to="/login" replace />
-               }/>
-
+        {/* fallback: se loggato → propria dashboard, altrimenti login */}
+        <Route
+          path="*"
+          element={
+            token && slug
+              ? <Navigate to={`/dashboard/${slug}`} replace />
+              : <Navigate to="/login" replace />
+          }
+        />
       </Routes>
     </Router>
   );

@@ -64,7 +64,8 @@ export default function Login() {
       } catch { /* ignore */ }
 
       // 2️⃣ hard-reload: garantito in Safari / incognito / preview
-      window.location.replace(`${window.location.origin}/${target}`);
+       await Promise.resolve();
+       window.location.replace(`/#/dashboard/${slug}`);
 
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
