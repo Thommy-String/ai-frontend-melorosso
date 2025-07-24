@@ -1,4 +1,3 @@
-import { v4 as uuid } from 'uuid';
 
 /* ------------------------------------------------------------------ */
 /*  BASE URL                                                          */
@@ -92,6 +91,13 @@ export function sendMessageStream(opts: SendOpts) {
 /* ------------------------------------------------------------------ */
 export async function getHistory(sessionId: string) {
   const r = await fetch(url(`/chat/${sessionId}`));
-  if (!r.ok) throw new Error();
+  if (!r.ok) { 
+  // SE la risposta non è OK, ma lo status è 404...
+  if (r.status === 404) {
+    
+    return []; 
+  }
+  throw new Error('Failed to fetch history'); 
+}
   return (await r.json()).chatLogs as { role: 'user' | 'assistant'; content: string }[];
 }
