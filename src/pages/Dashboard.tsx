@@ -37,6 +37,14 @@ const AVATAR_SIZE = 200; // Dimensione in pixel per l'avatar (quadrato)
 const MAX_PICSUM_ID = 1000; // Il numero massimo di ID disponibili su Picsum Photos
 
 
+// FUNZIONE per determinare il colore della percentuale
+function getChatPctColor(pct: number) {
+  if (pct >= 90) return '#dc2626'; // Rosso
+  if (pct >= 80) return '#f59e0b'; // Giallo/Ambra scuro
+  return 'var(--accent)'; // Colore di default
+}
+
+
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
@@ -71,7 +79,7 @@ export default function Dashboard() {
       .then(r => r.json())
       .then(subData => {
         setChatMonth(`${subData.chats_used}/${subData.monthly_quota}`);
-        setChatPct(subData.pct_used);               // 0-100
+        setChatPct(Math.round(subData.pct_used * 100));             // 0-100
       })
       .catch(console.error);
 
@@ -201,41 +209,51 @@ export default function Dashboard() {
         <MetricCard
           img="https://static.thenounproject.com/png/1433088-200.png"
           title="Conversazioni totali"
-          subtitle="Dall’inizio"
+          subtitle="Da sempre"
           value={sessionsCount}
           description="Totale delle conversazioni avviate con il chatbot."
         />
 
 
-        <MetricCard
-          img="https://cdn.creazilla.com/icons/3261496/data-usage-icon-lg.png"
-          title="Token mese corrente"
-          subtitle={new Date().toLocaleString('it-IT', { month: 'long', year: 'numeric' })}
-          value={monthTokens}
-          description={`Mese scorso: ${prevMonthTokens.toLocaleString()} token`}
-        />
+
 
         {chatMonth && (
           <MetricCard
             img="https://static.thenounproject.com/png/6203007-200.png"
             title="Chat mese corrente"
-            subtitle={`${chatPct}% del limite`}
-            value={chatMonth}          // es. "23/60"
-            description="Si azzera al rinnovo"
+            // MODIFICA: Sottotitolo con colore dinamico
+            subtitle={
+              <span style={{ color: getChatPctColor(chatPct) }}>
+                {`${chatPct}% del limite`}
+              </span>
+            }
+            value={chatMonth}
+            // MODIFICA: Descrizione condizionale con link mailto
+            description={
+              chatPct >= 100 ? (
+                <a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">
+                  Chiedi di aumentare il limite
+                </a>
+              ) : (
+                "Si azzera al rinnovo"
+              )
+            }
           />
         )}
 
-        {/* ---- CARD FAQ ---- */}
-        {faqs.length > 0 && (
-          <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
-        )}
 
-        {/* INSIGHTS */}
-        {insightPreview && (
-          <InsightsCard preview={insightPreview} slug={slug!} />
-        )}
-
-
+        <div className="dashboard-sections">
+          {faqs.length > 0 && (
+            <section className="faq-section">
+              <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
+            </section>
+          )}
+          {insightPreview && (
+            <section className="insights-section">
+              <InsightsCard preview={insightPreview} slug={slug!} />
+            </section>
+          )}
+        </div>
 
       </div>
 
@@ -328,10 +346,10 @@ function MetricCard({
   value,
 }: {
   img: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  value: number | string;
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+  description: React.ReactNode;
+  value: React.ReactNode;
 }) {
   return (
     <div className="metric-card">
@@ -349,52 +367,45 @@ function MetricCard({
 
 function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   return (
-    <div className="metric-card">
-      <img
-        src="https://cdn-icons-png.flaticon.com/512/2618/2618540.png"
-        alt="FAQ"
-        className="metric-card-img"
-      />
-      <div className="metric-card-content">
-        <div className="metric-card-title">Domande più frequenti</div>
-        <div className="metric-card-subtitle">Ultimi 30 giorni</div>
-
-        <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: 8 }}>
-          {faqs.map(f => (
-            <li key={f.question} style={{ fontSize: '0.9rem', marginBottom: 6 }}>
-              <strong style={{ color: 'var(--accent)' }}>{f.count}×</strong>{' '}
-              {f.question}
-            </li>
-          ))}
-        </ul>
-
-        {tips && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 6 }}>
-            {tips}
-          </div>
-        )}
+    // Il contenitore principale non usa più la classe "metric-card"
+    <div className="faq-card-content">
+      <div className="section-header">
+        <img src="https://cdn-icons-png.flaticon.com/512/2618/2618540.png" alt="FAQ"/>
+        <h2>Domande più frequenti</h2>
       </div>
+      <p className="section-subtitle">Basato sulle chat degli ultimi 30 giorni</p>
+      
+      {/* Lista delle domande con nuove classi per lo stile */}
+      <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: 16 }}>
+        {faqs.map(f => (
+          <li key={f.question} className="faq-item">
+            <span className="faq-count">{f.count}×</span>
+            <span className="faq-question">{f.question}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Sezione dei consigli con una classe dedicata */}
+      {tips && <p className="section-tips">{tips}</p>}
     </div>
   );
 }
 
-function InsightsCard(
-  { preview, slug }: { preview: string; slug: string }
-) {
+function InsightsCard({ preview, slug }: { preview: string; slug:string }) {
   return (
-    <div className="metric-card insights-card">
-      <img src="https://cdn-icons-png.flaticon.com/512/3068/3068380.png"
-        alt="Insights" className="metric-card-img" />
 
-      <div className="metric-card-content">
-        <div className="metric-card-title">Analisi conversazioni</div>
-        <p style={{ fontSize: '.85rem', margin: '8px 0' }}>{preview}</p>
-
-        <Link to={`/insights/${slug}`}
-          style={{ fontSize: '.8rem', color: 'var(--accent)' }}>
-          Leggi le analisi delle chat→
-        </Link>
+    <div className="insights-card-content">
+       <div className="section-header">
+        <img src="https://cdn-icons-png.flaticon.com/512/3068/3068380.png" alt="Insights" />
+        <h2>Analisi conversazioni</h2>
       </div>
+      <p className="section-subtitle">Un riassunto delle tendenze emerse dalle chat.</p>
+      
+     
+      <p className="insights-preview">{preview}</p>
+      <Link to={`/insights/${slug}`} className="section-link">
+        Leggi le analisi complete →
+      </Link>
     </div>
   );
 }
