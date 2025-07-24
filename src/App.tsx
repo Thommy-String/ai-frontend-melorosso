@@ -1,7 +1,5 @@
 // App.tsx ------------------------------------------------------------
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-
 import Login      from './pages/Login';
 import Dashboard  from './pages/Dashboard';
 import Insights   from './pages/Insights';
@@ -54,19 +52,10 @@ function ChatRoute() {
 
 /* =========================== APP ================================= */
 export default function App() {
-  /* leggere il token (può trovarsi su localStorage o sessionStorage) */
-  const readTok = () =>
-    localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-
-  const [token, setToken] = useState<string | null>(readTok); // stato reattivo
-  const slug = getSlugFromToken(token);
-
-  /*  si aggiorna quando il login avviene da questa o da un’altra tab  */
-  useEffect(() => {
-    const onStorage = () => setToken(readTok());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  /* Leggiamo il token al **render corrente**: se la Login l’ha appena
+     scritto, qui lo vediamo subito senza need di reload                       */
+  const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
+  const slug  = getSlugFromToken(token);
 
   return (
     <Router>
@@ -92,7 +81,7 @@ export default function App() {
           element={ token ? <ChatRoute /> : <Navigate to="/login" replace /> }
         />
 
-        {/* fallback: se loggato → propria dashboard, altrimenti login */}
+        {/* fallback */}
         <Route
           path="*"
           element={
