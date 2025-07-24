@@ -1,94 +1,97 @@
+import { v4 as uuid } from 'uuid';
+
+/* ------------------------------------------------------------------ */
+/*  Sessione unica per l’utente                                       */
+/* ------------------------------------------------------------------ */
+const STORAGE_KEY = 'chat_session_id';
+let SESSION_ID: string | null = localStorage.getItem(STORAGE_KEY) ?? null;
+
 /* ------------------------------------------------------------------ */
 /*  BASE URL                                                          */
 /* ------------------------------------------------------------------ */
-/* di default è null: il widget deve chiamare setApiBase()            */
 let BASE: string | null = import.meta.env.VITE_API ?? null;
 
-/** Imposta (o sovrascrive) il dominio del back-end */
 export function setApiBase(u: string) {
-  BASE = u.replace(/\/+$/, '');                 // rimuove eventuali slash finali
+  BASE = u.replace(/\/+$/, '');
 }
 
-/** concatena il path a BASE; lancia errore se BASE è ancora null */
 function url(path: string) {
   if (!BASE) throw new Error('API base URL not set – call setApiBase() first');
   return `${BASE}${path}`;
 }
 
 /* ------------------------------------------------------------------ */
-/*  TIPI e INTERFACCIA                                                */
+/*  TIPI                                                              */
 /* ------------------------------------------------------------------ */
 export interface SendOpts {
   client_slug: string;
   message: string;
-  session_id: string;
   pageContent?: string;
-  stream?: boolean;
+  stream?: boolean;            // (per ora ignorato: usiamo sempre SSE)
 }
 
-/* callback per i chunk e per l’errore */
-type DataCB = (chunk: string) => void;
+/* ------------------------------------------------------------------ */
+/*  sendMessageStream                                                 */
+/* ------------------------------------------------------------------ */
+type DataCB  = (chunk: string) => void;
 type ErrorCB = () => void;
 
-/* ------------------------------------------------------------------ */
-/*  sendMessageStream – emula EventSource con fetch + ReadableStream  */
-/* ------------------------------------------------------------------ */
 export function sendMessageStream(opts: SendOpts) {
+  /* ► assicuro di avere sempre lo stesso SID */
+  if (!SESSION_ID) {
+    SESSION_ID = uuid();
+    try { localStorage.setItem(STORAGE_KEY, SESSION_ID); } catch { /* quota piena? pazienza */ }
+  }
+
+  const body = JSON.stringify({ ...opts, session_id: SESSION_ID });
   const ctrl = new AbortController();
 
-  /* callback impostati dal chiamante */
-  let onData: DataCB = () => { };
-  let onError: ErrorCB = () => { };
+  let onData:  DataCB  = () => {};
+  let onError: ErrorCB = () => {};
 
-  /* “pseudo-EventSource” esposto al widget */
   const es = {
     onmessage(cb: DataCB) { onData = cb; },
-    onerror(cb: ErrorCB) { onError = cb; },
+    onerror  (cb: ErrorCB) { onError = cb; },
     close() { ctrl.abort(); }
   } as const;
 
   fetch(url('/chat'), {
-    method: 'POST',
+    method : 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'text/event-stream'
+      'Accept'      : 'text/event-stream'
     },
-    body: JSON.stringify(opts),
+    body,
     signal: ctrl.signal
   })
     .then(res => {
       if (!res.ok || !res.body) throw new Error('Bad response');
-      const rd = res.body.getReader();
+      const rd  = res.body.getReader();
       const dec = new TextDecoder();
-      let buf = '';
+      let buf   = '';
 
-      /* -------- pump ricorsivo --------------------------------------- */
       const pump = (): void => {
-        rd.read()
-          .then(({ done, value }) => {
-            if (done) { onData('[END]'); return; }
+        rd.read().then(({ done, value }) => {
+          if (done) { onData('[END]'); return; }
 
-            buf += dec.decode(value, { stream: true });
+          buf += dec.decode(value, { stream: true });
 
-            let idx: number;
-            while ((idx = buf.indexOf('\n\n')) > -1) {
-              const raw = buf.slice(0, idx).trimEnd();
-              buf = buf.slice(idx + 2);
-              if (raw.startsWith('data:')) onData(raw.slice(5));
-            }
-            pump();                       // continua a leggere
-          })
-          .catch(err => {
-            /* ⬇️ swallow AbortError generati da es.close() */
-            if (err?.name === 'AbortError') return;
-            if (!ctrl.signal.aborted) onError();
-          });
+          let idx: number;
+          while ((idx = buf.indexOf('\n\n')) > -1) {
+            const raw = buf.slice(0, idx).trimEnd();
+            buf = buf.slice(idx + 2);
+            if (raw.startsWith('data:')) onData(raw.slice(5));
+          }
+          pump();
+        })
+        .catch(err => {
+          if (err?.name !== 'AbortError' && !ctrl.signal.aborted) onError();
+        });
       };
       pump();
     })
     .catch(err => {
-      if (err?.name === 'AbortError') return;   // chiusura volontaria
-      if (!ctrl.signal.aborted) onError();
+      if (err?.name !== 'AbortError' && !ctrl.signal.aborted) onError();
     });
 
   return es;
