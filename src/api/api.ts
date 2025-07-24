@@ -1,18 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
 /* ------------------------------------------------------------------ */
-/*  Sessione unica per l’utente                                       */
-/* ------------------------------------------------------------------ */
-const SESSION_STORAGE_KEY = 'chat_session_id';
-const USER_STORAGE_KEY = 'chat_user_id'; // NUOVA CHIAVE
-
-let SESSION_ID: string | null = localStorage.getItem(SESSION_STORAGE_KEY);
-let USER_ID: string | null = localStorage.getItem(USER_STORAGE_KEY); // NUOVA VARIABILE
-
-
-
-
-/* ------------------------------------------------------------------ */
 /*  BASE URL                                                          */
 /* ------------------------------------------------------------------ */
 let BASE: string | null = import.meta.env.VITE_API ?? null;
@@ -32,6 +20,7 @@ function url(path: string) {
 export interface SendOpts {
   client_slug: string;
   message: string;
+  session_id : string;
   pageContent?: string;
   stream?: boolean;            // (per ora ignorato: usiamo sempre SSE)
 }
@@ -43,18 +32,8 @@ type DataCB  = (chunk: string) => void;
 type ErrorCB = () => void;
 
 export function sendMessageStream(opts: SendOpts) {
-  /* ► assicuro di avere sempre lo stesso SID */
-  if (!SESSION_ID) {
-    SESSION_ID = uuid();
-    try { localStorage.setItem(SESSION_STORAGE_KEY, SESSION_ID); } catch { /* quota piena? pazienza */ }
-  }
-
-   if (!USER_ID) {
-    USER_ID = uuid();
-    try { localStorage.setItem(USER_STORAGE_KEY, USER_ID); } catch {}
-  }
-
-  const body = JSON.stringify({ ...opts, session_id: SESSION_ID, user_id: USER_ID });
+  
+  const body = JSON.stringify(opts);
   const ctrl = new AbortController();
 
   let onData:  DataCB  = () => {};

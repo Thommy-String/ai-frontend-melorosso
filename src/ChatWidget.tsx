@@ -96,6 +96,8 @@ export default function ChatWidget({
     if (!id) { id = uuidv4(); localStorage.setItem(k, id); }
     return id;
   });
+
+
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
