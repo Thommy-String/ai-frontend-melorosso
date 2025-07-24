@@ -1,411 +1,254 @@
-// src/pages/Dashboard.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import './Dashboard.css';
 
+// Interfacce e costanti API rimangono invariate
 const API = 'https://ai-backend-melorosso.onrender.com';
-
-interface Session {
-  session_id: string;
-  created_at: string;
-  updated_at: string;
-  message_count: string;
-  preview: string | null;
-  avatarUrl?: string; // Aggiungiamo un campo per l'URL dell'avatar
-}
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: string;
-}
-
-
+interface Session { session_id: string; created_at: string; updated_at: string; message_count: string; preview: string | null; avatarUrl?: string; }
+interface Message { role: 'user' | 'assistant'; content: string; created_at: string; }
 interface Faq { question: string; count: number }
-
-/* ------- tipi & stato ------------------------------------------- */
-interface Insight {
-  title: string;     // es. "Dubbi ricorrenti sui prezzi"
-  body: string;     // testo descrittivo
-}
-
-
-// URL base per le immagini placeholder di Lorem Picsum
-// Possiamo generare immagini uniche usando un ID alla fine: https://picsum.photos/id/ID/SIZE
+interface Insight { title: string; body: string; }
 const LOREM_PICSUM_BASE_URL = 'https://picsum.photos/id/';
-const AVATAR_SIZE = 200; // Dimensione in pixel per l'avatar (quadrato)
-const MAX_PICSUM_ID = 1000; // Il numero massimo di ID disponibili su Picsum Photos
+const AVATAR_SIZE = 200;
+const MAX_PICSUM_ID = 1000;
 
-
-// FUNZIONE per determinare il colore della percentuale
+// --- Helper Functions ---
 function getChatPctColor(pct: number) {
-  if (pct >= 90) return '#dc2626'; // Rosso
-  if (pct >= 80) return '#f59e0b'; // Giallo/Ambra scuro
-  return 'var(--accent)'; // Colore di default
+  if (pct >= 90) return '#ef4444'; // Rosso più intenso
+  if (pct >= 80) return '#f59e0b'; // Ambra
+  return 'var(--c-accent)';
 }
 
+// --- Componenti UI Ridisegnati ---
 
-export default function Dashboard() {
-  const { slug } = useParams<{ slug: string }>();
-  const nav = useNavigate();
-  const [monthTokens, setMonthTokens] = useState(0);
-  const [prevMonthTokens, setPrevMonthTokens] = useState(0);
-  const [active, setAct] = useState(0);
-  const [msgs, setMsgs] = useState(0);
-  const [avgRes, setAvg] = useState(0);
-  const [sessionsCount, setSessionsCount] = useState(0);
+// Icona per le card (SVG inline per non dipendere da file esterni)
+const CardIcon = ({ path }: { path: string }) => (
+  <div className="metric-card-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={path}/></svg>
+  </div>
+);
 
-  const [faqs, setFaqs] = useState<{ q: string; count: number }[]>([]);
-  const [tips, setTips] = useState('');
-  const [sessionsList, setSessionsList] = useState<Session[]>([]
-  );
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const [isLoadingChat, setIsLoadingChat] = useState(false);
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [insightPreview, setInsightPreview] = useState('');
-  const [chatMonth, setChatMonth] = useState('');   // es. "12/60"
-  const [chatPct, setChatPct] = useState(0);    // es. 20 (%)
-
-
-  useEffect(() => {
-    const token = localStorage.getItem('jwt');
-    if (!token || !slug) { nav('/login'); return; }
-
-    const headers = { Authorization: `Bearer ${token}` };
-
-    /* recupero subscription in parallelo */
-    fetch(`${API}/stats/subscription/${slug}`, { headers })
-      .then(r => r.json())
-      .then(subData => {
-        setChatMonth(`${subData.chats_used}/${subData.monthly_quota}`);
-        setChatPct(Math.round(subData.pct_used * 100));             // 0-100
-      })
-      .catch(console.error);
-
-    Promise.all([
-      fetch(`${API}/stats/${slug}`, { headers }),
-      fetch(`${API}/stats/sessions/${slug}`, { headers }),
-      fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-      fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
-    ])
-      .then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
-        if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
-          nav('/login'); return;
-        }
-
-
-        /* --- deserialize ------------------------------------------------ */
-        const statsData = await statsRes.json();
-        const sessionsData = await sessionsRes.json() as Session[];
-        const faqData = await faqRes.json();
-        const insightsData = await insRes.json();
-
-        /* --------- insight preview + parsing ---------- */
-        const { summary = '', bullets = [], actions = [] } = insightsData;
-
-        // ► se il riassunto è più lungo di ~400 char prendi il primo paragrafo,
-        //   altrimenti mostra tutto il paragrafo e tronca a 400 char
-        let previewSrc = summary.trim();
-        if (!previewSrc) previewSrc = bullets[0] || actions[0] || '';
-
-        const MAX_PREVIEW = 300;
-        const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];   // primo paragrafo
-        const preview = firstParagraph.length > MAX_PREVIEW
-          ? firstParagraph.slice(0, MAX_PREVIEW) + '…'
-          : firstParagraph;
-
-        console.log('▶ insightsData:', insightsData);
-        console.log('▶ previewSrc  :', previewSrc);
-        console.log('▶ preview     :', preview);
-
-        setInsightPreview(preview);
-
-
-
-        /* --- metriche --------------------------------------------------- */
-        setMonthTokens(Number(statsData.monthTokens || 0));
-        setPrevMonthTokens(Number(statsData.prevMonthTokens || 0));
-        setAct(statsData.active);
-        setMsgs(statsData.totalMessages);
-        setAvg(statsData.avg_response || statsData.avgResponse || 0);
-        setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
-
-
-        /* --- FAQ -------------------------------------------------------- */
-        setFaqs(faqData.faqs ?? []);
-        setTips(faqData.tips ?? '');
-
-        console.log('[raw] insightsData ⇒', insightsData);
-        /*Insights */
-        const parsedInsights: Insight[] = [
-          ...(insightsData.bullets ?? []).map((b: string) => ({
-            title: 'Insight', body: b
-          })),
-          ...(insightsData.actions ?? []).map((a: string) => ({
-            title: 'Azione consigliata', body: a
-          }))
-        ];
-        console.log('[parsed] insights ⇒', parsedInsights);
-        setInsights(parsedInsights);
-
-        /* --- avatar placeholder ---------------------------------------- */
-        const sessionsWithAvatars = sessionsData.map((s, idx) => {
-          const id = (idx % (MAX_PICSUM_ID - 50)) + 50;
-          return { ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${id}/${AVATAR_SIZE}` };
-        });
-        setSessionsList(sessionsWithAvatars);
-      })
-      .catch(console.error);
-  }, [slug, nav]);
-
-  const handleOpenChat = (sessionId: string) => {
-    const token = localStorage.getItem('jwt');
-    if (!token) return;
-
-    setSelectedSessionId(sessionId);
-    setIsLoadingChat(true);
-    setChatMessages([]);
-
-    fetch(`${API}/chat/${sessionId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => setChatMessages(data.chatLogs || []))
-      .catch(console.error)
-      .finally(() => setIsLoadingChat(false));
-  };
-
-  const handleCloseChat = () => {
-    setSelectedSessionId(null);
-    setChatMessages([]);
-  };
-
-  return (
-    <div className="dashboard-container">
-      <h1 className="dashboard-title">Dashboard {(slug)?.toUpperCase()}</h1>
-      <div className="dashboard-cards">
-        <MetricCard
-          img="https://static.thenounproject.com/png/926001-200.png"
-          title="Sessioni attive"
-          subtitle="Ultima ora"
-          value={active}
-          description="Numero di persone che hanno avviato una conversazione nell'ultima ora"
-        />
-        <MetricCard
-          img="https://cdn-icons-png.flaticon.com/512/865/865771.png"
-          title="Messaggi totali"
-          subtitle="Dall’inizio"
-          value={msgs}
-          description="Totale messaggi ricevuti dal chatbot su questo account."
-        />
-        <MetricCard
-          img="https://static.thenounproject.com/png/1139400-200.png"
-          title="Velocità risposta media"
-          subtitle="In secondi"
-          value={avgRes}
-          description="Tempo medio di risposta del bot, calcolato su tutte le sessioni."
-        />
-        <MetricCard
-          img="https://static.thenounproject.com/png/1433088-200.png"
-          title="Conversazioni totali"
-          subtitle="Da sempre"
-          value={sessionsCount}
-          description="Totale delle conversazioni avviate con il chatbot."
-        />
-
-
-
-
-        {chatMonth && (
-          <MetricCard
-            img="https://static.thenounproject.com/png/6203007-200.png"
-            title="Chat mese corrente"
-            // MODIFICA: Sottotitolo con colore dinamico
-            subtitle={
-              <span style={{ color: getChatPctColor(chatPct) }}>
-                {`${chatPct}% del limite`}
-              </span>
-            }
-            value={chatMonth}
-            // MODIFICA: Descrizione condizionale con link mailto
-            description={
-              chatPct >= 100 ? (
-                <a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">
-                  Chiedi di aumentare il limite
-                </a>
-              ) : (
-                "Si azzera al rinnovo"
-              )
-            }
-          />
-        )}
-
-
-        <div className="dashboard-sections">
-          {faqs.length > 0 && (
-            <section className="faq-section">
-              <FaqCard faqs={faqs.slice(0, 5)} tips={tips} />
-            </section>
-          )}
-          {insightPreview && (
-            <section className="insights-section">
-              <InsightsCard preview={insightPreview} slug={slug!} />
-            </section>
-          )}
-        </div>
-
-      </div>
-
-      <div className={`chat-section-container ${selectedSessionId ? 'chat-open' : ''}`}>
-        <div className="chat-list-pane">
-          <div className="chat-list-header">
-            <h2>Conversazioni</h2>
-          </div>
-          <div className="chat-list-items">
-            {sessionsList.length > 0 ? (
-              sessionsList.map((s) => (
-                <div
-                  key={s.session_id}
-                  className={`chat-list-item ${selectedSessionId === s.session_id ? 'active' : ''}`}
-                  onClick={() => handleOpenChat(s.session_id)}
-                >
-                  {/* Usa l'URL dell'avatar come background-image */}
-                  <div
-                    className="chat-list-item-avatar"
-                    style={{ backgroundImage: `url(${s.avatarUrl})` }}
-                  ></div>
-                  <div className="chat-list-item-content">
-                    <div className="chat-list-item-header">
-                      <span className="chat-list-item-id">...{s.session_id.slice(-8)}</span>
-                      <span className="chat-list-item-time">
-                        {new Date(s.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        <small className="chat-list-item-date">
-                          {new Date(s.updated_at).toLocaleDateString([], {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </small>
-                      </span>
-                    </div>
-                    <div className="chat-list-item-preview">
-                      {s.preview ? s.preview : 'Nessuna anteprima'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="no-sessions-message">Nessuna sessione trovata.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="chat-detail-pane">
-          {selectedSessionId ? (
-            <>
-              <div className="chat-detail-header">
-                <button className="back-button" onClick={handleCloseChat}>
-                  &larr;
-                </button>
-                <h3>Dettaglio Chat: ...{selectedSessionId.slice(-8)}</h3>
-              </div>
-              <div className="messages-container">
-                {isLoadingChat ? (
-                  <p className="loading-message">Caricamento messaggi...</p>
-                ) : chatMessages.length > 0 ? (
-                  chatMessages.map((msg, i) => (
-                    <div key={i} className={`message-bubble ${msg.role}`}>
-                      <p>{msg.content}</p>
-                      <span className="message-time">
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="no-messages-message">Nessun messaggio in questa chat.</p>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="no-chat-selected">
-              <p>Seleziona una chat per visualizzare i messaggi.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({
-  img,
-  title,
-  subtitle,
-  description,
-  value,
-}: {
-  img: string;
-  title: React.ReactNode;
-  subtitle: React.ReactNode;
-  description: React.ReactNode;
-  value: React.ReactNode;
-}) {
+// Componente MetricCard ridisegnato
+function MetricCard({ iconPath, title, value, description, children }: { iconPath: string; title: React.ReactNode; value: React.ReactNode; description: React.ReactNode; children?: React.ReactNode; }) {
   return (
     <div className="metric-card">
-      <img src={img} alt={title} className="metric-card-img" />
-      <div className="metric-card-content">
-        <div className="metric-card-title">{title}</div>
-        <div className="metric-card-subtitle">{subtitle}</div>
-        <div className="metric-card-value">{value}</div>
-        <div className="metric-card-description">{description}</div>
+      <div className="metric-card-header">
+        <CardIcon path={iconPath} />
+        <span className="metric-card-title">{title}</span>
       </div>
+      <div className="metric-card-value">{value}</div>
+      <div className="metric-card-description">{description}</div>
+      {children}
     </div>
   );
 }
 
-
-function FaqCard({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
+// Sezione FAQ ridisegnata
+function FaqSection({ faqs, tips }: { faqs: Faq[]; tips?: string }) {
   return (
-    // Il contenitore principale non usa più la classe "metric-card"
-    <div className="faq-card-content">
-      <div className="section-header">
-        <img src="https://cdn-icons-png.flaticon.com/512/2618/2618540.png" alt="FAQ"/>
-        <h2>Domande più frequenti</h2>
-      </div>
-      <p className="section-subtitle">Basato sulle chat degli ultimi 30 giorni</p>
-      
-      {/* Lista delle domande con nuove classi per lo stile */}
-      <ul style={{ listStyle: 'none', paddingLeft: 0, marginTop: 16 }}>
+    <div className="content-section">
+      <h2 className="section-title">Domande Frequenti</h2>
+      <p className="section-subtitle">Le domande più comuni emerse dalle conversazioni degli ultimi 30 giorni.</p>
+      <ul className="faq-list">
         {faqs.map(f => (
           <li key={f.question} className="faq-item">
-            <span className="faq-count">{f.count}×</span>
             <span className="faq-question">{f.question}</span>
+            <span className="faq-count">{f.count} volte</span>
           </li>
         ))}
       </ul>
-
-      {/* Sezione dei consigli con una classe dedicata */}
       {tips && <p className="section-tips">{tips}</p>}
     </div>
   );
 }
 
-function InsightsCard({ preview, slug }: { preview: string; slug:string }) {
+// Sezione Insights ridisegnata
+function InsightsSection({ preview, slug }: { preview: string; slug: string }) {
   return (
-
-    <div className="insights-card-content">
-       <div className="section-header">
-        <img src="https://cdn-icons-png.flaticon.com/512/3068/3068380.png" alt="Insights" />
-        <h2>Analisi conversazioni</h2>
-      </div>
-      <p className="section-subtitle">Un riassunto delle tendenze emerse dalle chat.</p>
-      
-     
+    <div className="content-section">
+      <h2 className="section-title">Analisi Conversazioni</h2>
+      <p className="section-subtitle">Un riassunto delle tendenze e dei punti chiave delle chat.</p>
       <p className="insights-preview">{preview}</p>
       <Link to={`/insights/${slug}`} className="section-link">
-        Leggi le analisi complete →
+        Vai all'analisi dettagliata →
       </Link>
+    </div>
+  );
+}
+
+
+// --- Componente Principale Dashboard ---
+
+export default function Dashboard() {
+  const { slug } = useParams<{ slug: string }>();
+  // Tutta la logica di stato e useEffect rimane identica
+  const nav = useNavigate();
+  const [active, setAct] = useState(0);
+  const [msgs, setMsgs] = useState(0);
+  const [avgRes, setAvg] = useState(0);
+  const [sessionsCount, setSessionsCount] = useState(0);
+  const [faqs, setFaqs] = useState<{ q: string; count: number }[]>([]);
+  const [tips, setTips] = useState('');
+  const [sessionsList, setSessionsList] = useState<Session[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [insightPreview, setInsightPreview] = useState('');
+  const [chatMonth, setChatMonth] = useState('');
+  const [chatPct, setChatPct] = useState(0);
+
+  useEffect(() => {
+    const token = localStorage.getItem('jwt');
+    if (!token || !slug) { nav('/login'); return; }
+    const headers = { Authorization: `Bearer ${token}` };
+    fetch(`${API}/stats/subscription/${slug}`, { headers })
+      .then(r => r.json())
+      .then(subData => {
+        setChatMonth(`${subData.chats_used} / ${subData.monthly_quota}`);
+        setChatPct(Math.round(subData.pct_used * 100));
+      })
+      .catch(console.error);
+    Promise.all([
+      fetch(`${API}/stats/${slug}`, { headers }),
+      fetch(`${API}/stats/sessions/${slug}`, { headers }),
+      fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+      fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
+    ]).then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
+      if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
+        nav('/login'); return;
+      }
+      const statsData = await statsRes.json();
+      const sessionsData = await sessionsRes.json() as Session[];
+      const faqData = await faqRes.json();
+      const insightsData = await insRes.json();
+      const { summary = '', bullets = [], actions = [] } = insightsData;
+      let previewSrc = summary.trim();
+      if (!previewSrc) previewSrc = bullets[0] || actions[0] || '';
+      const MAX_PREVIEW = 250;
+      const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];
+      const preview = firstParagraph.length > MAX_PREVIEW ? firstParagraph.slice(0, MAX_PREVIEW) + '…' : firstParagraph;
+      setInsightPreview(preview);
+      setAct(statsData.active);
+      setMsgs(statsData.totalMessages);
+      setAvg(statsData.avg_response || statsData.avgResponse || 0);
+      setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+      setFaqs(faqData.faqs ?? []);
+      setTips(faqData.tips ?? '');
+      const sessionsWithAvatars = sessionsData.map((s, idx) => ({ ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` }));
+      setSessionsList(sessionsWithAvatars);
+    }).catch(console.error);
+  }, [slug, nav]);
+
+  const handleOpenChat = (sessionId: string) => {
+    const token = localStorage.getItem('jwt');
+    if (!token) return;
+    setSelectedSessionId(sessionId);
+    setIsLoadingChat(true);
+    setChatMessages([]);
+    fetch(`${API}/chat/${sessionId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setChatMessages(data.chatLogs || []))
+      .catch(console.error)
+      .finally(() => setIsLoadingChat(false));
+  };
+  const handleCloseChat = () => setSelectedSessionId(null);
+
+  // --- RETURN STATEMENT RIDISEGNATO ---
+  return (
+    <div className="dashboard-page">
+      <header className="dashboard-header">
+        <h1>Dashboard di {(slug)?.replace(/-/g, ' ')}</h1>
+        <p>Panoramica delle performance e delle conversazioni del tuo assistente AI.</p>
+      </header>
+
+      <main>
+        <div className="metrics-grid">
+          <MetricCard iconPath="M12 20v-6M6 20v-2M18 20v-4" title="Sessioni attive" value={active} description="Conversazioni nell'ultima ora" />
+          <MetricCard iconPath="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" title="Messaggi totali" value={msgs.toLocaleString('it-IT')} description="Dall'inizio del servizio" />
+          <MetricCard iconPath="m.5 1 6 6-6 6" title="Velocità risposta" value={`${avgRes}s`} description="Tempo di risposta medio" />
+          <MetricCard iconPath="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" title="Conversazioni totali" value={sessionsCount.toLocaleString('it-IT')} description="Dall'inizio del servizio" />
+          
+          {chatMonth && (
+            <MetricCard
+              iconPath="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              title="Utilizzo Chat Mensile"
+              value={chatMonth}
+              description={
+                <span style={{ color: getChatPctColor(chatPct) }}>
+                  Utilizzato il {chatPct}% del limite
+                </span>
+              }
+            >
+              <div className="progress-bar-container">
+                <div className="progress-bar" style={{ width: `${chatPct}%`, backgroundColor: getChatPctColor(chatPct) }}></div>
+              </div>
+              {chatPct >= 100 && (
+                 <a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">
+                   Contattaci per aumentare il limite
+                 </a>
+              )}
+            </MetricCard>
+          )}
+        </div>
+
+        <div className="content-sections-grid">
+          {faqs.length > 0 && <FaqSection faqs={faqs.slice(0, 5)} tips={tips} />}
+          {insightPreview && <InsightsSection preview={insightPreview} slug={slug!} />}
+        </div>
+
+        <div className="chat-viewer-container">
+           <div className={`session-list-pane ${selectedSessionId ? 'mobile-hidden' : ''}`}>
+             <div className="session-list-header">
+                <h2>Conversazioni Recenti</h2>
+             </div>
+             <div className="session-list">
+                {sessionsList.length > 0 ? (
+                  sessionsList.map((s) => (
+                    <div key={s.session_id} className={`session-item ${selectedSessionId === s.session_id ? 'active' : ''}`} onClick={() => handleOpenChat(s.session_id)}>
+                      <img src={s.avatarUrl} alt="avatar" className="session-avatar"/>
+                      <div className="session-details">
+                         <div className="session-info">
+                            <span className="session-id">Sessione ...{s.session_id.slice(-6)}</span>
+                            <span className="session-time">{new Date(s.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
+                         </div>
+                         <p className="session-preview">{s.preview || 'Nessun messaggio'}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-state-message">Nessuna sessione trovata.</p>
+                )}
+             </div>
+           </div>
+           
+           <div className={`message-pane ${selectedSessionId ? 'mobile-visible' : ''}`}>
+              {selectedSessionId ? (
+                <>
+                  <div className="message-pane-header">
+                    <button className="back-button" onClick={handleCloseChat}>←</button>
+                    <h3>Dettaglio Chat</h3>
+                    <span>ID: ...{selectedSessionId.slice(-6)}</span>
+                  </div>
+                  <div className="message-list">
+                     {isLoadingChat ? (
+                        <p className="empty-state-message">Caricamento...</p>
+                     ) : (
+                        chatMessages.map((msg, i) => (
+                           <div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}>
+                              <div className="message-bubble">{msg.content}</div>
+                           </div>
+                        ))
+                     )}
+                  </div>
+                </>
+              ) : (
+                <div className="empty-state-message">
+                  <p>Seleziona una conversazione per visualizzarne i dettagli.</p>
+                </div>
+              )}
+           </div>
+        </div>
+      </main>
     </div>
   );
 }
