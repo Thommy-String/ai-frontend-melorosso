@@ -4,6 +4,8 @@ import Login      from './pages/Login';
 import Dashboard  from './pages/Dashboard';
 import Insights   from './pages/Insights';
 import ChatWidget from './ChatWidget';
+import { useAuth } from './AuthContext';
+
 
 /* ---------- tema per singolo client ------------------------------ */
 const brand = (slug: string) => ({
@@ -52,36 +54,33 @@ function ChatRoute() {
 
 /* =========================== APP ================================= */
 export default function App() {
-  /* Leggiamo il token al **render corrente**: se la Login l’ha appena
-     scritto, qui lo vediamo subito senza need di reload                       */
-  const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-  const slug  = getSlugFromToken(token);
+  const { token } = useAuth(); // Usa l'hook per avere il token reattivo!
+  const slug = getSlugFromToken(token);
 
   return (
     <Router>
       <Routes>
-        {/* login pubblico */}
-        <Route path="/login" element={<Login />} />
-
-        {/* dashboard protetta */}
+        {/* Se c'è un token, non mostrare la pagina di login, vai alla dashboard */}
+        <Route 
+          path="/login" 
+          element={!token ? <Login /> : <Navigate to={`/dashboard/${slug}`} replace />} 
+        />
+        
+        {/* Le tue route protette ora funzionano correttamente */}
         <Route
           path="/dashboard/:slug"
-          element={ token ? <Dashboard /> : <Navigate to="/login" replace /> }
+          element={token ? <Dashboard /> : <Navigate to="/login" replace />}
         />
-
-        {/* insights protetti */}
         <Route
           path="/insights/:slug"
-          element={ token ? <Insights /> : <Navigate to="/login" replace /> }
+          element={token ? <Insights /> : <Navigate to="/login" replace />}
         />
-
-        {/* widget protetto */}
         <Route
           path="/chat/:slug"
-          element={ token ? <ChatRoute /> : <Navigate to="/login" replace /> }
+          element={token ? <ChatRoute /> : <Navigate to="/login" replace />}
         />
 
-        {/* fallback */}
+        {/* Fallback */}
         <Route
           path="*"
           element={

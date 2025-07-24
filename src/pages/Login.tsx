@@ -1,10 +1,9 @@
+// src/pages/Login.tsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';   // ⬅️  contesto
 import './Login.css';
 
-/* ---------------------------------------------------- */
-/*  JWT helper (base64url → JSON)                       */
-/* ---------------------------------------------------- */
+/* ----------------------------- JWT helper ----------------------------- */
 function parseJwt(token: string) {
   try {
     const [, payload] = token.split('.');
@@ -16,16 +15,15 @@ function parseJwt(token: string) {
   }
 }
 
-/* ==================================================== */
+/* ===================================================================== */
 export default function Login() {
-  const nav = useNavigate();
-
+  const { setToken }      = useAuth();           // funzione reattiva
   const [email, setEmail] = useState('');
-  const [password, setPwd] = useState('');
-  const [loading, setLoad] = useState(false);
-  const [errMsg, setErr] = useState('');
+  const [password, setPwd]= useState('');
+  const [loading, setLoad]= useState(false);
+  const [errMsg,  setErr] = useState('');
 
-  /* -------------------------------------------------- */
+  /* ---------------------------- submit -------------------------------- */
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr('');
@@ -33,52 +31,34 @@ export default function Login() {
 
     try {
       const res = await fetch(
-        'https://ai-backend-melorosso.onrender.com/auth/login',
+        'https://ai-backend-melorosso.onrender.com/auth/login', // ⬅️  endpoint reale
         {
-          method: 'POST',
+          method : 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body   : JSON.stringify({ email, password })
         }
       );
 
       const { token, error } = await res.json();
       if (!res.ok) throw new Error(error || 'Credenziali non valide');
 
-      localStorage.setItem('jwt', token);
-      sessionStorage.setItem('jwt', token);
-
-      /* ---------- slug dal JWT ---------- */
       const payload = parseJwt(token);
-      const slug = payload?.slug as string | undefined;
-      console.log('[login] decoded slug ⇒', slug);
+      if (!payload?.slug) throw new Error('Token privo di slug');
 
-      if (!slug) throw new Error('Token privo di slug');
-
-      /* ---------- redirect dashboard (qualsiasi host / preview) ---- */
-      const target = `#/dashboard/${slug}`;
-
-      // 1️⃣ prova soft: SPA navigation → funzioni locali / dev
-      try {
-        // evita crash se non siamo dentro un router ancora montato
-        nav(target, { replace: true });
-      } catch { /* ignore */ }
-
-      // 2️⃣ hard-reload: garantito in Safari / incognito / preview
-       await Promise.resolve();
-       window.location.replace(`/#/dashboard/${slug}`);
+      // salva + notifica tutto il resto dell’app
+      setToken(token);
 
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
-    } finally {
       setLoad(false);
     }
+    // ❌ niente else/finally: resterà in "loading" giusto il tempo del redirect
   };
 
-  /* -------------------------------------------------- */
+  /* ----------------------------- UI ----------------------------------- */
   return (
     <div className="login-bg">
       <div className="login-card">
-
         <div className="login-logo-wrap">
           <img
             src="https://file.aiquickdraw.com/imgcompressed/img/compressed_01209031180c636cc1d733567956e414.webp"
@@ -93,43 +73,35 @@ export default function Login() {
         {errMsg && <div className="login-error">{errMsg}</div>}
 
         <form onSubmit={onSubmit} className="login-form">
-          <div>
-            <label htmlFor="email" className="login-label">Email</label>
-            <input
-              id="email"
-              type="email"
-              className="login-input"
-              placeholder="tuo@esempio.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="login-label">Password</label>
-            <input
-              id="password"
-              type="password"
-              className="login-input"
-              placeholder="Password"
-              value={password}
-              onChange={e => setPwd(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="login-btn"
+          <label className="login-label" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="login-input"
+            placeholder="tuo@esempio.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
             disabled={loading}
-          >
+          />
+
+          <label className="login-label" htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            className="login-input"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPwd(e.target.value)}
+            required
+            disabled={loading}
+          />
+
+          <button className="login-btn" type="submit" disabled={loading}>
             {loading ? 'Accesso…' : 'Accedi'}
           </button>
         </form>
       </div>
     </div>
   );
-}
+} 
