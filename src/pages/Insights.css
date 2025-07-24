@@ -1,249 +1,199 @@
 /* src/pages/Insights.css */
 
-/* Importa le variabili globali da Dashboard.css */
-/* Assicurati che Dashboard.css sia caricato prima di questo file,
-   o includi le variabili :root direttamente qui se non è globale. */
+/* --- Importazione delle variabili globali dalla Dashboard --- */
 :root {
-  --whatsapp-green: #075e54; /* Colore principale di WhatsApp */
-  --whatsapp-light-green: #128c7e;
-  --whatsapp-bubble-in: #dcf8c6; /* Bolla messaggio in entrata (utente) */
-  --whatsapp-bubble-out: #ffffff; /* Bolla messaggio in uscita (assistente) */
-  --whatsapp-background: #ece5dd; /* Sfondo generale della chat */
-  --whatsapp-text-dark: #333;
-  --whatsapp-text-light: #888;
-  --border-color: #e0e0e0;
-  --shadow-light: rgba(0, 0, 0, 0.05);
-  --shadow-medium: rgba(0, 0, 0, 0.1);
-  --accent: #128c7e; /* Mantenuto per le metriche */
+  --c-bg: #f8f9fa;
+  --c-surface: #ffffff;
+  --c-border: #dee2e6;
+  --c-text-primary: #212529;
+  --c-text-secondary: #6c757d;
+  --c-accent: #007bff;
+  --c-accent-soft: #e7f1ff;
+  --c-success: #198754;
+  --c-success-soft: #d1e7dd;
+  --c-warning: #ffc107;
+  --c-warning-soft: #fff3cd;
+  --c-danger: #dc3545;
+  --c-danger-soft: #f8d7da;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --radius-md: 8px;
+  --radius-lg: 16px;
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background-color: #f0f2f5; /* Sfondo leggermente più scuro per la pagina */
-}
-
+/* --- Layout di Base della Pagina --- */
 .insights-page {
-  margin: 48px auto;
-  padding: 0 20px;
-  max-width: 1000px; /* Larghezza coerente con la dashboard */
-  color: var(--whatsapp-text-dark);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
 }
 
-.insights-loading,
-.insights-error {
+.page-state-message {
   text-align: center;
-  padding: 40px 20px;
+  padding: 60px 20px;
   font-size: 1.1rem;
-  color: var(--whatsapp-text-light);
+  color: var(--c-text-secondary);
+}
+.page-state-message.error {
+  color: var(--c-danger);
 }
 
-/* --- Header della Pagina --- */
+/* --- Header --- */
 .insights-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color); /* Sottile linea divisoria */
+  align-items: flex-start;
+  margin-bottom: 48px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--c-border);
 }
 
-.insights-header h1 {
-  font-size: 2.2rem;
+.insights-title {
+  font-size: 2.5rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  color: #151515;
-  margin: 0; /* Rimuove margini predefiniti */
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--c-text-primary);
 }
 
-.back-link {
-  color: var(--whatsapp-light-green); /* Colore link coerente con accent */
+.insights-subtitle {
+  font-size: 1.1rem;
+  color: var(--c-text-secondary);
+  margin-top: 8px;
+  text-transform: capitalize;
+}
+
+.back-to-dashboard-link {
+  display: inline-block;
+  background-color: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  color: var(--c-text-primary);
   text-decoration: none;
   font-weight: 500;
-  font-size: 1rem;
-  transition: color 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px; /* Spazio tra freccia e testo */
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.back-to-dashboard-link:hover {
+  background-color: var(--c-bg);
+  border-color: #ced4da;
+  box-shadow: var(--shadow-sm);
 }
 
-.back-link:hover {
-  color: var(--whatsapp-green); /* Verde più scuro all'hover */
+/* --- Sezione Panoramica (Summary) --- */
+.summary-section {
+  background-color: var(--c-accent-soft);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  margin-bottom: 48px;
 }
 
-/* --- Articolo di Sintesi (Panoramica) --- */
-.insights-summary {
-  background: #fff;
-  border-radius: 16px; /* Angoli leggermente più pronunciati per le sezioni principali */
-  box-shadow: 0 4px 20px rgba(32, 36, 47, 0.08), 0 1px 4px rgba(60, 60, 60, 0.08); /* Ombra più marcata */
-  padding: 30px;
-  margin-bottom: 32px;
-}
-
-.insights-summary h2 {
-  font-size: 1.7rem;
+.summary-section h2 {
+  font-size: 1.75rem;
   font-weight: 600;
-  color: var(--whatsapp-green);
-  margin-top: 0;
-  margin-bottom: 15px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--border-color);
+  color: var(--c-accent);
+  margin: 0 0 16px 0;
 }
 
-.insights-summary p {
-  font-size: 1.05rem;
+.summary-section p {
+  font-size: 1.1rem;
   line-height: 1.7;
-  color: var(--whatsapp-text-dark);
+  color: var(--c-text-primary);
   margin: 0;
 }
 
-/* --- Griglia Insight + Azioni --- */
+/* --- Griglia per Insight e Azioni --- */
 .insights-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Due colonne di uguale larghezza */
-  gap: 32px; /* Spazio tra le card */
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
 }
 
-.insights-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(32, 36, 47, 0.08), 0 1px 4px rgba(60, 60, 60, 0.08);
-  padding: 30px;
-  display: flex;
-  flex-direction: column; /* Per allineamento interno */
+.content-card {
+  background-color: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
 }
 
-.insights-card h3 {
+.card-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--whatsapp-light-green); /* Un tono di verde diverso per i sottotitoli */
-  margin-top: 0;
-  margin-bottom: 20px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color); /* Linea più sottile per i sottotitoli */
+  margin: 0 0 24px 0;
+  color: var(--c-text-primary);
 }
 
-.insights-card ul,
-.insights-card ol {
-  list-style: none; /* Rimuove lo stile predefinito */
+.item-list {
+  list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.insights-card ul li,
-.insights-card ol li {
-  font-size: 1.05rem;
-  line-height: 1.6;
-  margin-bottom: 12px;
-  color: var(--whatsapp-text-dark);
-  display: flex; /* Per allineare bullet/numero con testo */
-  align-items: flex-start; /* Allinea l'inizio del testo */
-  gap: 10px; /* Spazio tra bullet/numero e testo */
-}
-
-/* Stile per i bullet points (Insights Principali) */
-.insights-card ul li .dot {
-  min-width: 8px; /* Dimensione fissa per il puntino */
-  height: 8px;
-  background-color: var(--whatsapp-light-green); /* Colore puntino */
-  border-radius: 50%;
-  margin-top: 8px; /* Allinea il puntino verticalmente con il testo */
-  flex-shrink: 0; /* Impedisce che il puntino si rimpicciolisca */
-}
-
-/* Stile per i numeri (Azioni Consigliate) */
-.insights-card ol li {
-  counter-increment: action-counter; /* Incrementa un contatore per i numeri */
-}
-
-.insights-card ol li::before {
-  content: counter(action-counter) ".";
-  color: var(--whatsapp-light-green);
-  font-weight: 700;
-  min-width: 25px; /* Spazio per i numeri a 2 cifre */
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.insights-card p {
+/* --- Stile degli Elementi della Lista (Insight/Action) --- */
+.insight-item, .action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background-color: var(--c-bg);
+  padding: 16px;
+  border-radius: var(--radius-md);
   font-size: 1rem;
-  color: var(--whatsapp-text-light);
-  text-align: center;
-  margin-top: 15px; /* Spazio sopra il messaggio */
+  line-height: 1.5;
 }
 
+.item-icon-wrapper {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-/* --- Responsive Design --- */
+/* Colori specifici per tipo */
+.insight-icon {
+  background-color: var(--c-warning-soft);
+  color: #856404;
+}
+
+.action-icon {
+  background-color: var(--c-success-soft);
+  color: var(--c-success);
+}
+
+.empty-card-message {
+  color: var(--c-text-secondary);
+  text-align: center;
+  padding: 24px;
+  background-color: var(--c-bg);
+  border-radius: var(--radius-md);
+}
+
+/* --- Responsive --- */
 @media (max-width: 900px) {
   .insights-grid {
-    grid-template-columns: 1fr; /* Una colonna su schermi più piccoli */
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
   .insights-page {
-    margin-top: 20px;
-    padding: 0 15px;
+    padding: 24px;
   }
-
   .insights-header {
-    flex-direction: column; /* Stack header items */
-    align-items: flex-start;
-    margin-bottom: 30px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
   }
-
-  .insights-header h1 {
-    font-size: 1.8rem;
-    margin-bottom: 15px; /* Spazio tra titolo e link */
+  .insights-title {
+    font-size: 2rem;
   }
-
-  .insights-summary {
-    padding: 25px;
-    margin-bottom: 25px;
-  }
-
-  .insights-summary h2 {
-    font-size: 1.5rem;
-  }
-
-  .insights-card {
-    padding: 25px;
-  }
-
-  .insights-card h3 {
-    font-size: 1.3rem;
-  }
-
-  .insights-card ul li,
-  .insights-card ol li {
-    font-size: 0.95rem;
-    margin-bottom: 10px;
-  }
-
-  .insights-card ul li .dot {
-    margin-top: 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .insights-header h1 {
-    font-size: 1.6rem;
-  }
-
-  .back-link {
-    font-size: 0.9rem;
-  }
-
-  .insights-summary,
-  .insights-card {
-    border-radius: 12px; /* Riduci leggermente il raggio su schermi molto piccoli */
-  }
-
-  .insights-summary h2 {
-    font-size: 1.3rem;
-  }
-
-  .insights-card h3 {
-    font-size: 1.2rem;
+  .summary-section {
+    padding: 24px;
   }
 }
