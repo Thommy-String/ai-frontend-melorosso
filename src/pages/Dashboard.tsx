@@ -1,5 +1,7 @@
+// src/pages/Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext'; // <-- AGGIUNGI QUESTA RIGA
 import './Dashboard.css';
 
 // Interfacce e costanti API rimangono invariate
@@ -110,6 +112,7 @@ export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   // Tutta la logica di stato e useEffect rimane identica
   const nav = useNavigate();
+  const { setToken } = useAuth();
   const [active, setAct] = useState(0);
   const [msgs, setMsgs] = useState(0);
   const [avgRes, setAvg] = useState(0);
@@ -126,47 +129,84 @@ export default function Dashboard() {
 
   const performanceStatus = getResponseTimeStatus(avgRes);
 
-  useEffect(() => {
+ useEffect(() => {
     const token = localStorage.getItem('jwt');
-    if (!token || !slug) { nav('/login'); return; }
+    if (!token || !slug) {
+      // Se non c'è token, non fare nulla e lascia che il router reindirizzi
+      // (o chiama nav('/login') se hai una logica specifica qui)
+      return;
+    }
+
     const headers = { Authorization: `Bearer ${token}` };
-    fetch(`${API}/stats/subscription/${slug}`, { headers })
-      .then(r => r.json())
-      .then(subData => {
+
+    // Funzione unica per fare tutte le chiamate
+    const fetchData = async () => {
+      try {
+        // Uniamo TUTTE le chiamate in un unico Promise.all
+        const responses = await Promise.all([
+          fetch(`${API}/stats/subscription/${slug}`, { headers }),
+          fetch(`${API}/stats/${slug}`, { headers }),
+          fetch(`${API}/stats/sessions/${slug}`, { headers }),
+          fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+          fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
+        ]);
+
+        // Controlla se ANCHE UNA SOLA risposta è 401/403
+        const authError = responses.find(r => r.status === 401 || r.status === 403);
+        if (authError) {
+          console.error("Token non valido o scaduto. Eseguo il logout forzato.");
+          setToken(null); // <-- LA SOLUZIONE CHIAVE: cancella il token
+          return; // Interrompe l'esecuzione
+        }
+
+        // Se tutto è OK, procedi a leggere i dati JSON
+        const [
+          subData,
+          statsData,
+          sessionsData,
+          faqData,
+          insightsData
+        ] = await Promise.all(responses.map(r => r.json()));
+        
+        // Imposta tutti gli stati con i dati ricevuti
         setChatMonth(`${subData.chats_used} / ${subData.monthly_quota}`);
         setChatPct(Math.round(subData.pct_used * 100));
-      })
-      .catch(console.error);
-    Promise.all([
-      fetch(`${API}/stats/${slug}`, { headers }),
-      fetch(`${API}/stats/sessions/${slug}`, { headers }),
-      fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-      fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
-    ]).then(async ([statsRes, sessionsRes, faqRes, insRes]) => {
-      if ([statsRes, sessionsRes, faqRes, insRes].some(r => r.status === 401 || r.status === 403)) {
-        nav('/login'); return;
+        
+        setAct(statsData.active);
+        setMsgs(statsData.totalMessages);
+        setAvg(statsData.avg_response || statsData.avgResponse || 0);
+        setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
+
+        setFaqs(faqData.faqs ?? []);
+        setTips(faqData.tips ?? '');
+        
+        const { summary = '', bullets = [], actions = [] } = insightsData;
+        let previewSrc = summary.trim() || bullets[0] || actions[0] || '';
+        const MAX_PREVIEW = 250;
+        const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];
+        setInsightPreview(
+          firstParagraph.length > MAX_PREVIEW 
+            ? firstParagraph.slice(0, MAX_PREVIEW) + '…' 
+            : firstParagraph
+        );
+
+        const sessionsWithAvatars = (sessionsData as Session[]).map((s, idx) => ({ 
+          ...s, 
+          avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` 
+        }));
+        setSessionsList(sessionsWithAvatars);
+
+      } catch (error) {
+        console.error("Errore nel caricamento dei dati della dashboard:", error);
+        // In caso di errore di rete, potresti voler cancellare il token
+        // per forzare un nuovo login.
+        setToken(null);
       }
-      const statsData = await statsRes.json();
-      const sessionsData = await sessionsRes.json() as Session[];
-      const faqData = await faqRes.json();
-      const insightsData = await insRes.json();
-      const { summary = '', bullets = [], actions = [] } = insightsData;
-      let previewSrc = summary.trim();
-      if (!previewSrc) previewSrc = bullets[0] || actions[0] || '';
-      const MAX_PREVIEW = 250;
-      const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];
-      const preview = firstParagraph.length > MAX_PREVIEW ? firstParagraph.slice(0, MAX_PREVIEW) + '…' : firstParagraph;
-      setInsightPreview(preview);
-      setAct(statsData.active);
-      setMsgs(statsData.totalMessages);
-      setAvg(statsData.avg_response || statsData.avgResponse || 0);
-      setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
-      setFaqs(faqData.faqs ?? []);
-      setTips(faqData.tips ?? '');
-      const sessionsWithAvatars = sessionsData.map((s, idx) => ({ ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` }));
-      setSessionsList(sessionsWithAvatars);
-    }).catch(console.error);
-  }, [slug, nav]);
+    };
+
+    fetchData();
+
+  }, [slug, nav, setToken]);
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
