@@ -110,7 +110,6 @@ function InsightsSection({ preview, slug }: { preview: string; slug: string }) {
 
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
-  // Tutta la logica di stato e useEffect rimane identica
   const nav = useNavigate();
   const { setToken } = useAuth();
   const [active, setAct] = useState(0);
@@ -126,87 +125,115 @@ export default function Dashboard() {
   const [insightPreview, setInsightPreview] = useState('');
   const [chatMonth, setChatMonth] = useState('');
   const [chatPct, setChatPct] = useState(0);
-
+  // STATO PER LA SELEZIONE DEL MESE
+  const [availableMonths, setAvailableMonths] = useState<{ month_value: string; month_label: string; }[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(''); // yyyy-mm, stringa vuota per il mese corrente
   const performanceStatus = getResponseTimeStatus(avgRes);
 
- useEffect(() => {
+
+  useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (!token || !slug) {
-      // Se non c'è token, non fare nulla e lascia che il router reindirizzi
-      // (o chiama nav('/login') se hai una logica specifica qui)
+      // Se non c'è token, il router gestirà il reindirizzamento.
       return;
     }
 
     const headers = { Authorization: `Bearer ${token}` };
-
-    // Funzione unica per fare tutte le chiamate
-    const fetchData = async () => {
-      try {
-        // Uniamo TUTTE le chiamate in un unico Promise.all
-        const responses = await Promise.all([
-          fetch(`${API}/stats/subscription/${slug}`, { headers }),
-          fetch(`${API}/stats/${slug}`, { headers }),
-          fetch(`${API}/stats/sessions/${slug}`, { headers }),
-          fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-          fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
-        ]);
-
-        // Controlla se ANCHE UNA SOLA risposta è 401/403
-        const authError = responses.find(r => r.status === 401 || r.status === 403);
-        if (authError) {
-          console.error("Token non valido o scaduto. Eseguo il logout forzato.");
-          setToken(null); // <-- LA SOLUZIONE CHIAVE: cancella il token
-          return; // Interrompe l'esecuzione
+    // Formatta il mese selezionato per la query API (es. '2025-07' -> '202507')
+    const yyyymm = selectedMonth ? selectedMonth.replace('-', '') : '';
+    
+    // Funzione helper per gestire l'errore di autenticazione in modo centralizzato
+    const handleAuthError = (res: Response) => {
+        if (res.status === 401 || res.status === 403) {
+            console.error("Token non valido o scaduto. Eseguo il logout forzato.");
+            setToken(null); // Cancella il token e interrompe il ciclo
+            return true;
         }
-
-        // Se tutto è OK, procedi a leggere i dati JSON
-        const [
-          subData,
-          statsData,
-          sessionsData,
-          faqData,
-          insightsData
-        ] = await Promise.all(responses.map(r => r.json()));
-        
-        // Imposta tutti gli stati con i dati ricevuti
-        setChatMonth(`${subData.chats_used} / ${subData.monthly_quota}`);
-        setChatPct(Math.round(subData.pct_used * 100));
-        
-        setAct(statsData.active);
-        setMsgs(statsData.totalMessages);
-        setAvg(statsData.avg_response || statsData.avgResponse || 0);
-        setSessionsCount(statsData.total_sessions || statsData.total_Sessions || 0);
-
-        setFaqs(faqData.faqs ?? []);
-        setTips(faqData.tips ?? '');
-        
-        const { summary = '', bullets = [], actions = [] } = insightsData;
-        let previewSrc = summary.trim() || bullets[0] || actions[0] || '';
-        const MAX_PREVIEW = 250;
-        const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];
-        setInsightPreview(
-          firstParagraph.length > MAX_PREVIEW 
-            ? firstParagraph.slice(0, MAX_PREVIEW) + '…' 
-            : firstParagraph
-        );
-
-        const sessionsWithAvatars = (sessionsData as Session[]).map((s, idx) => ({ 
-          ...s, 
-          avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` 
-        }));
-        setSessionsList(sessionsWithAvatars);
-
-      } catch (error) {
-        console.error("Errore nel caricamento dei dati della dashboard:", error);
-        // In caso di errore di rete, potresti voler cancellare il token
-        // per forzare un nuovo login.
-        setToken(null);
-      }
+        return false;
     };
 
-    fetchData();
+    // --- Funzione per caricare i dati che cambiano con il mese ---
+    const fetchDataForMonth = async () => {
+        // Costruisce gli URL dinamicamente in base al mese selezionato
+        const statsUrl = yyyymm ? `${API}/stats/${slug}?yyyymm=${yyyymm}` : `${API}/stats/${slug}`;
+        const subUrl = yyyymm ? `${API}/stats/subscription/${slug}?yyyymm=${yyyymm}` : `${API}/stats/subscription/${slug}`;
 
-  }, [slug, nav, setToken]);
+        try {
+            const [statsRes, subRes] = await Promise.all([
+                fetch(statsUrl, { headers }),
+                fetch(subUrl, { headers })
+            ]);
+
+            if (handleAuthError(statsRes) || handleAuthError(subRes)) return;
+
+            const statsData = await statsRes.json();
+            const subData = await subRes.json();
+
+            // Aggiorna gli stati con i dati del mese selezionato
+            setAct(statsData.active);
+            setMsgs(statsData.totalMessages);
+            setAvg(statsData.avgResponse);
+            setSessionsCount(statsData.total_Sessions);
+            setChatMonth(`${subData.chats_used} / ${subData.monthly_quota}`);
+            setChatPct(Math.round(subData.pct_used * 100));
+
+        } catch (error) {
+            console.error("Errore nel fetch dei dati del mese:", error);
+        }
+    };
+
+    // --- Funzione per caricare i dati iniziali (che non cambiano) ---
+    const fetchInitialData = async () => {
+        try {
+            const responses = await Promise.all([
+                fetch(`${API}/stats/sessions/${slug}`, { headers }),
+                fetch(`${API}/stats/subscription/history/${slug}`, { headers }),
+                fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+                fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
+            ]);
+            
+            if (responses.some(handleAuthError)) return;
+
+            const [sessionsData, monthsData, faqData, insightsData] = await Promise.all(responses.map(res => res.json()));
+            
+            // Aggiungi l'opzione "Mese Corrente" in cima alla lista per il selettore
+            setAvailableMonths([
+                { month_value: '', month_label: 'Mese Corrente' },
+                ...monthsData
+            ]);
+
+            // Imposta gli altri stati che non dipendono dal mese
+            setFaqs(faqData.faqs ?? []);
+            setTips(faqData.tips ?? '');
+            
+            const { summary = '', bullets = [], actions = [] } = insightsData;
+            let previewSrc = summary.trim() || bullets[0] || actions[0] || '';
+            const MAX_PREVIEW = 250;
+            const firstParagraph = previewSrc.split(/\n\n|\r\n\r\n/)[0];
+            setInsightPreview(
+              firstParagraph.length > MAX_PREVIEW 
+                ? firstParagraph.slice(0, MAX_PREVIEW) + '…' 
+                : firstParagraph
+            );
+
+            const sessionsWithAvatars = (sessionsData as Session[]).map((s, idx) => ({ 
+              ...s, 
+              avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` 
+            }));
+            setSessionsList(sessionsWithAvatars);
+
+        } catch (error) {
+             console.error("Errore nel fetch dei dati iniziali:", error);
+        }
+    };
+    
+    // Esegui le chiamate
+    if (availableMonths.length === 0) {
+        fetchInitialData();
+    }
+    fetchDataForMonth();
+
+  }, [slug, nav, setToken, selectedMonth]); // Ricarica i dati quando il mese selezionato cambia
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
@@ -231,6 +258,21 @@ export default function Dashboard() {
       <header className="dashboard-header">
         <h1>Dashboard di {(slug)?.replace(/-/g, ' ')}</h1>
         <p>Panoramica delle performance e delle conversazioni del tuo assistente AI.</p>
+        {availableMonths.length > 1 && (
+            <div className="month-selector-wrapper">
+                <select 
+                    className="month-selector"
+                    value={selectedMonth} 
+                    onChange={e => setSelectedMonth(e.target.value)}
+                >
+                    {availableMonths.map(month => (
+                        <option key={month.month_value} value={month.month_value}>
+                            {month.month_label}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        )}
       </header>
 
       <main>
