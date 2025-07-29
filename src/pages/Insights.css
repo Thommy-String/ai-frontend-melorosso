@@ -175,21 +175,6 @@
 }
 
 
-.month-selector-wrapper {
-  margin-top: 24px;
-}
-
-.month-selector {
-  font-family: var(--font-family);
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--c-border);
-  background-color: var(--c-surface);
-  cursor: pointer;
-}
-
 /* --- Responsive --- */
 @media (max-width: 900px) {
   .insights-grid {
