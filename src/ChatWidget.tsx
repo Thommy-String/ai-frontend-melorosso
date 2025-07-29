@@ -80,14 +80,6 @@ export default function ChatWidget({
 
 
   /* -------------------------------------------------- */
-  /*  Stile dinamico                                    */
-  /* -------------------------------------------------- */
-  useEffect(() => {
-    document.documentElement
-      .style.setProperty('--mlr-accent', accent);
-  }, [accent]);
-
-  /* -------------------------------------------------- */
   /*  Stato sessione / UI                               */
   /* -------------------------------------------------- */
   const [sessionId] = useState(() => {

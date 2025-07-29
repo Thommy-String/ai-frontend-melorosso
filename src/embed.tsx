@@ -10,15 +10,18 @@ import { setApiBase } from './api/api';
  *     - ChatWidgetProps → quelle che il componente sa gestire
  *     - Embed-only      → api / colori / badge stringa │ array
  * ------------------------------------------------------------------ */
-interface EmbedOpts extends Omit<ChatWidgetProps, 'badgeMsgs'> {
-  /* extra “embed” */
+interface EmbedOpts extends Omit<ChatWidgetProps, 'badgeMsgs'>  {
   api?: string;
   accentDark?: string;
   bg?: string;
   bgDark?: string;
   text?: string;
-
-  /* badge (può arrivare come stringa "a|b|c" oppure array)        */
+  // --- NUOVI ATTRIBUTI DI COLORE ---
+  chatBg?: string;
+  userBubbleBg?: string;
+  userBubbleText?: string;
+  assistantBubbleBg?: string;
+  assistantBubbleText?: string;
   badgeMsgs?: string | string[];
 }
 
@@ -27,11 +30,17 @@ interface EmbedOpts extends Omit<ChatWidgetProps, 'badgeMsgs'> {
  * ------------------------------------------------------------------ */
 function applyCSSVars(o: EmbedOpts) {
   const r = document.documentElement.style;
-  if (o.accent)     r.setProperty('--mlr-accent',       o.accent);
-  if (o.accentDark) r.setProperty('--mlr-accent-dark',  o.accentDark);
-  if (o.bg)         r.setProperty('--mlr-bg',           o.bg);
-  if (o.bgDark)     r.setProperty('--mlr-bg-dark',      o.bgDark);
-  if (o.text)       r.setProperty('--mlr-text',         o.text);
+  if (o.accent)     r.setProperty('--mlr-accent', o.accent);
+  if (o.accentDark) r.setProperty('--mlr-accent-dark', o.accentDark);
+  if (o.bg)         r.setProperty('--mlr-bg', o.bg);
+  if (o.bgDark)     r.setProperty('--mlr-bg-dark', o.bgDark);
+  if (o.text)       r.setProperty('--mlr-text', o.text);
+  // --- NUOVE VARIABILI CSS ---
+  if (o.chatBg)             r.setProperty('--mlr-chat-bg', o.chatBg);
+  if (o.userBubbleBg)       r.setProperty('--mlr-user-bubble-bg', o.userBubbleBg);
+  if (o.userBubbleText)     r.setProperty('--mlr-user-bubble-text', o.userBubbleText);
+  if (o.assistantBubbleBg)  r.setProperty('--mlr-assistant-bubble-bg', o.assistantBubbleBg);
+  if (o.assistantBubbleText)r.setProperty('--mlr-assistant-bubble-text', o.assistantBubbleText);
 }
 
 /* ------------------------------------------------------------------
@@ -48,25 +57,19 @@ function applyCSSVars(o: EmbedOpts) {
 /* ------------------------------------------------------------------
  *  4 · Mount reale del widget                                       */
 function mount(opts: EmbedOpts) {
-  /* 4.1 – API base */
   if (opts.api) setApiBase(opts.api);
-
-  /* 4.2 – CSS vars */
   applyCSSVars(opts);
-
-  /* 4.3 – Host invisibile */
   const host = document.createElement('div');
   document.body.appendChild(host);
 
-  /* 4.4 – Converte eventuale stringa “a|b|c” in array */
   const badgeArr = typeof opts.badgeMsgs === 'string'
     ? opts.badgeMsgs.split('|').map(t => t.trim()).filter(Boolean)
     : opts.badgeMsgs;
 
-  /* 4.5 – Prop “embed-only” da scartare prima del render */
   const {
-    api, accentDark, bg, bgDark, text,        // embed only
-    badgeMsgs,                                // sostituito con badgeArr
+    api, accentDark, bg, bgDark, text,
+    chatBg, userBubbleBg, userBubbleText, assistantBubbleBg, assistantBubbleText, // Escludiamo le nuove prop
+    badgeMsgs,
     ...widgetProps
   } = opts;
 
@@ -87,11 +90,8 @@ window.ChatWidget = { init: mount };
 const s = document.currentScript as HTMLScriptElement | null;
 if (s?.dataset.slug) {
   mount({
-    /* obbligatorie */
     slug   : s.dataset.slug!,
     title  : s.dataset.title,
-
-    /* opzionali */
     api        : s.dataset.api,
     accent     : s.dataset.accent,
     accentDark : s.dataset.accentDark,
@@ -101,8 +101,13 @@ if (s?.dataset.slug) {
     logoUrl    : s.dataset.logo,
     startText  : s.dataset.startText,
     floating   : s.dataset.floating === 'true',
-
-    /* badge: CSV “a|b|c” */
-    badgeMsgs  : s.dataset.badges
+    badgeMsgs  : s.dataset.badges,
+    // --- NUOVI DATA-* LETTI DALLO SCRIPT ---
+    chatBg             : s.dataset.chatBg,
+    userBubbleBg       : s.dataset.userBubbleBg,
+    userBubbleText     : s.dataset.userBubbleText,
+    assistantBubbleBg  : s.dataset.assistantBubbleBg,
+    assistantBubbleText: s.dataset.assistantBubbleText,
   });
+
 }
