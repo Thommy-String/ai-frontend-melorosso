@@ -25,8 +25,11 @@ type ButtonMsg = { id: string; type: 'button'; role: 'assistant'; label: string;
 // ✅ NUOVO TIPO
 type ProductCardData = { title: string; price: string; imageUrl: string; linkUrl: string; };
 type ProductCardMsg = { id: string; type: 'product_card'; role: 'assistant'; data: ProductCardData };
-// ✅ AGGIORNA Msg
-type Msg = TextMsg | ButtonMsg | ProductCardMsg;
+
+type MapCardData = { title: string; embedUrl: string; linkUrl: string };
+type MapCardMsg = { id: string; type: 'map_card'; role: 'assistant'; data: MapCardData };
+type Msg = TextMsg | ButtonMsg | ProductCardMsg | MapCardMsg;
+
 
 /* ---------- helper -------------------------------------------------- */
 type Timer = ReturnType<typeof setTimeout>;   // evita NodeJS.Timeout
@@ -151,6 +154,15 @@ export default function ChatWidget({
                     content: String(obj.content ?? '')
                   };
                 }
+                if (obj?.type === 'map_card') {
+                  return {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    type: 'map_card',
+                    data: obj.data          // {title,mapUrl,linkUrl}
+                  };
+                }
+
               } catch { /* non-JSON */ }
 
               return { // fallback puro testo
@@ -240,6 +252,14 @@ export default function ChatWidget({
               content: parsed.content ?? ''
             });
           }
+          else if (parsed.type === 'map_card' && parsed.data) {
+            incoming.push({
+              id: crypto.randomUUID(),
+              role: 'assistant',
+              type: 'map_card',
+              data: parsed.data
+            });
+          }
         }
 
         /* – array di oggetti ------------------------------------------------ */
@@ -260,6 +280,13 @@ export default function ChatWidget({
                 role: 'assistant',
                 type: 'text',
                 content: obj.content ?? ''
+              });
+            } else if (obj.type === 'map_card') {          // 🆕 fuori dal ramo button
+              incoming.push({
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                type: 'map_card',
+                data: obj.data
               });
             }
           });
@@ -383,6 +410,24 @@ export default function ChatWidget({
                         <div className="product-card-price">{m.data.price}</div>
                       </div>
                     </a>
+                  </div>
+                );
+              }
+              if (m.type === 'map_card') {
+                return (
+                  <div key={m.id} className="message assistant">
+                    <div className="map-card">
+                      <iframe
+                        src={m.data.embedUrl}
+                        width="100%" height="180"
+                        loading="lazy" style={{ border: 0 }}
+                        allowFullScreen></iframe>
+                      <div className="map-card-footer">
+                        <a href={m.data.linkUrl} target="_blank" rel="noopener noreferrer">
+                          Apri su Google Maps
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 );
               }
