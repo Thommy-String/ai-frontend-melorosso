@@ -1,6 +1,5 @@
-// src/components/ContactRequestSection.tsx - VERSIONE CORRETTA
-import React from 'react';
-import './ContactRequestSection.css'; // Assicurati di avere un file CSS per questo componente se necessario
+// src/components/ContactRequestSection.tsx
+import './ContactRequestSection.css'
 
 export interface ContactRequest {
   session_id: string;
@@ -12,12 +11,15 @@ export interface ContactRequest {
   created_at: string;
 }
 
+// ✅ NUOVE PROP: hasMore e onLoadMore
 interface ContactRequestsSectionProps {
   requests: ContactRequest[];
-  onShowHistory: (request: ContactRequest) => void; 
+  onShowHistory: (request: ContactRequest) => void;
+  hasMore: boolean;
+  onLoadMore: () => void;
 }
 
-export default function ContactRequestsSection({ requests, onShowHistory }: ContactRequestsSectionProps) {
+export default function ContactRequestsSection({ requests, onShowHistory, hasMore, onLoadMore }: ContactRequestsSectionProps) {
   return (
     <div className="contact-requests-section">
       <div className="content-section">
@@ -25,7 +27,6 @@ export default function ContactRequestsSection({ requests, onShowHistory }: Cont
         <p className="section-subtitle">Gli ultimi lead generati dal tuo assistente AI. Clicca su una riga per vedere la chat.</p>
         <ul className="contact-requests-list">
           {requests.map((req) => (
-            // ✅ CORREZIONE: Passiamo l'intero oggetto 'req' invece del solo 'req.session_id'
             <li key={req.session_id} className="contact-request-item clickable" onClick={() => onShowHistory(req)}>
               <div className="contact-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -45,6 +46,14 @@ export default function ContactRequestsSection({ requests, onShowHistory }: Cont
             </li>
           ))}
         </ul>
+        {/* ✅ NUOVO: Mostra il pulsante solo se ci sono altri contatti da caricare */}
+        {hasMore && (
+          <div className="load-more-container">
+            <button onClick={onLoadMore} className="load-more-button">
+              Carica Altri
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

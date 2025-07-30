@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import './Dashboard.css';
 import ContactRequestsSection, { type ContactRequest } from '../ContactRequestSection';
 import ChatHistoryViewer from '../ChatHistoryViewer';
+
 // --- Interfacce e Costanti ---
 const API = 'https://ai-backend-melorosso.onrender.com';
 interface Session { session_id: string; created_at: string; updated_at: string; message_count: string; preview: string | null; avatarUrl?: string; }
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const { setToken } = useAuth();
 
+  // Stati per le metriche e la UI
   const [active, setAct] = useState(0);
   const [msgs, setMsgs] = useState(0);
   const [avgRes, setAvg] = useState(0);
@@ -45,11 +47,14 @@ export default function Dashboard() {
   const [planName, setPlanName] = useState<string | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [nextRenewalDate, setNextRenewalDate] = useState<string | null>(null);
-  const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
   const [selectedContact, setSelectedContact] = useState<ContactRequest | null>(null);
   const [historyMessages, setHistoryMessages] = useState<Message[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
+  const [hasMoreContacts, setHasMoreContacts] = useState(true);
+  const [contactsOffset, setContactsOffset] = useState(0);
 
+  // ✅ CORREZIONE: Un solo blocco useEffect pulito
   useEffect(() => {
     const token = localStorage.getItem('jwt');
     if (!token || !slug) return;
@@ -60,13 +65,10 @@ export default function Dashboard() {
       try {
         let subData: any, statsData: any;
         if (selectedPeriod) {
-          setPlanName(null);
-          setNextRenewalDate(null);
-
+          setPlanId(null); setPlanName(null); setNextRenewalDate(null);
           const subRes = await fetch(`${API}/stats/subscription/historical-entry/${selectedPeriod}`, { headers });
           if (handleAuthError(subRes)) return;
           subData = await subRes.json();
-
           const statsRes = await fetch(`${API}/stats/${slug}?start_date=${subData.start_date}&end_date=${subData.renew_date}`, { headers });
           if (handleAuthError(statsRes)) return;
           statsData = await statsRes.json();
@@ -75,7 +77,6 @@ export default function Dashboard() {
           if (handleAuthError(subRes)) return;
           subData = await subRes.json();
           if (!subData || !subData.start_date) return;
-
           const statsRes = await fetch(`${API}/stats/${slug}?start_date=${subData.start_date}&end_date=${subData.renew_date}`, { headers });
           if (handleAuthError(statsRes)) return;
           statsData = await statsRes.json();
@@ -83,7 +84,6 @@ export default function Dashboard() {
           setPlanName(subData.plan_name);
           const formattedRenewalDate = new Date(subData.renew_date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
           setNextRenewalDate(formattedRenewalDate);
-
           const startDate = new Date(subData.start_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
           const renewDate = new Date(subData.renew_date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
           setCurrentPeriodLabel(`Ciclo Corrente (${startDate} - ${renewDate})`);
@@ -94,54 +94,61 @@ export default function Dashboard() {
         setSessionsCount(statsData.total_Sessions);
         setChatMonth(`${subData.chats_used} / ${subData.monthly_quota}`);
         setChatPct(subData.pct_used ? Math.round(subData.pct_used * 100) : 0);
-      } catch (error) {
-        console.error("Errore nel caricamento dei dati:", error);
-      }
+      } catch (error) { console.error("Errore nel caricamento dei dati del periodo:", error); }
     };
 
-    const fetchInitialData = async () => {
+    const fetchInitialData = async (offset = 0) => {
       try {
-        const [historyRes, sessionsRes, faqRes, insightsRes, contactsRes] = await Promise.all([
-          fetch(`${API}/stats/subscription/history/${slug}`, { headers }),
-          fetch(`${API}/stats/sessions/${slug}`, { headers }),
-          fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-          fetch(`${API}/stats/insights/${slug}?days=30`, { headers }),
-          fetch(`${API}/stats/contact-requests/${slug}`, { headers })
-        ]);
-        if ([historyRes, sessionsRes, faqRes, insightsRes, contactsRes].some(handleAuthError)) return;
-        const [historyData, sessionsData, faqData, insightsData, contactsData] = await Promise.all([historyRes.json(), sessionsRes.json(), faqRes.json(), insightsRes.json(), contactsRes.json()]);
-        setAvailablePeriods(historyData);
-        setFaqs(faqData.faqs ?? []);
-        setTips(faqData.tips ?? '');
-        setContactRequests(contactsData);
-        const { summary = '', bullets = [], actions = [] } = insightsData;
-        let previewSrc = summary.trim() || bullets?.[0] || actions?.[0] || '';
-        const MAX_PREVIEW = 250;
-        const firstParagraph = previewSrc.split(/\n\n/)[0];
-        setInsightPreview(firstParagraph.length > MAX_PREVIEW ? firstParagraph.slice(0, MAX_PREVIEW) + '…' : firstParagraph);
-        const sessionsWithAvatars = (sessionsData as Session[]).map((s, idx) => ({ ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` }));
-        setSessionsList(sessionsWithAvatars);
-      } catch (error) {
-        console.error("Errore nel caricamento dei dati iniziali:", error);
-      }
+        if (offset === 0) {
+          setContactRequests([]);
+          const [historyRes, sessionsRes, faqRes, insightsRes, contactsRes] = await Promise.all([
+            fetch(`${API}/stats/subscription/history/${slug}`, { headers }),
+            fetch(`${API}/stats/sessions/${slug}`, { headers }),
+            fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+            fetch(`${API}/stats/insights/${slug}?days=30`, { headers }),
+            fetch(`${API}/stats/contact-requests/${slug}?offset=0`, { headers })
+          ]);
+          if ([historyRes, sessionsRes, faqRes, insightsRes, contactsRes].some(handleAuthError)) return;
+          const [historyData, sessionsData, faqData, insightsData, contactsData] = await Promise.all([historyRes.json(), sessionsRes.json(), faqRes.json(), insightsRes.json(), contactsRes.json()]);
+          setAvailablePeriods(historyData);
+          setFaqs(faqData.faqs ?? []);
+          setTips(faqData.tips ?? '');
+          setSessionsList((sessionsData as Session[]).map((s, idx) => ({ ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` })));
+          const { summary = '', bullets = [], actions = [] } = insightsData;
+          let previewSrc = summary.trim() || bullets?.[0] || actions?.[0] || '';
+          const MAX_PREVIEW = 250;
+          const firstParagraph = previewSrc.split(/\n\n/)[0];
+          setInsightPreview(firstParagraph.length > MAX_PREVIEW ? firstParagraph.slice(0, MAX_PREVIEW) + '…' : firstParagraph);
+          setContactRequests(contactsData.requests || []);
+          setHasMoreContacts((contactsData.requests?.length || 0) < contactsData.total);
+          setContactsOffset(10);
+        } else {
+          const contactsRes = await fetch(`${API}/stats/contact-requests/${slug}?offset=${offset}`, { headers });
+          if (handleAuthError(contactsRes)) return;
+          const contactsData = await contactsRes.json();
+          setContactRequests(prev => [...prev, ...(contactsData.requests || [])]);
+          setHasMoreContacts((contactRequests.length + (contactsData.requests?.length || 0)) < contactsData.total);
+          setContactsOffset(prev => prev + 10);
+        }
+      } catch (error) { console.error("Errore nel caricamento dei dati iniziali:", error); }
     };
 
-    if (availablePeriods.length === 0) {
-      fetchInitialData();
-    }
-    fetchDataForPeriod();
+    const loadData = async () => {
+      await fetchInitialData(0);
+      await fetchDataForPeriod();
+    };
+    
+    loadData();
   }, [slug, selectedPeriod, setToken]);
 
+  const handleLoadMoreContacts = () => fetchInitialData(contactsOffset);
 
-  // ✅ NUOVA FUNZIONE per aprire il modale e caricare i dati
- const handleOpenContactChat = (request: ContactRequest) => {
+  const handleOpenContactChat = (request: ContactRequest) => {
     const token = localStorage.getItem('jwt');
     if (!token) return;
-    
-    setSelectedContact(request); // Salva i dati del contatto selezionato
+    setSelectedContact(request);
     setIsLoadingHistory(true);
     setHistoryMessages([]);
-
     fetch(`${API}/chat/${request.session_id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => { setHistoryMessages(data.chatLogs || []); })
@@ -149,7 +156,7 @@ export default function Dashboard() {
       .finally(() => setIsLoadingHistory(false));
   };
 
-const handleCloseViewer = () => setSelectedContact(null);
+  const handleCloseViewer = () => setSelectedContact(null);
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
@@ -168,88 +175,63 @@ const handleCloseViewer = () => setSelectedContact(null);
   const performanceStatus = getResponseTimeStatus(avgRes);
 
   return (
-    <div className="dashboard-page">
-      <header className="dashboard-header">
-        <h1>Dashboard di {(slug)?.replace(/-/g, ' ')}</h1>
-        <p>Panoramica delle performance e delle conversazioni del tuo assistente AI.</p>
-
-        {planName && nextRenewalDate && (
-          <div className={`subscription-infocard plan--${planId}`}>
-            <div className="infocard-icon">
-              <svg fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-name="Layer 1"><path d="M17,2H5A1,1,0,0,0,4,3V19a1,1,0,0,0,1,1H6v1a1,1,0,0,0,1,1H7a1,1,0,0,0,1-1V20h9a3,3,0,0,0,3-3V5A3,3,0,0,0,17,2ZM14,18H6V4h8Zm4-1a1,1,0,0,1-1,1H16V4h1a1,1,0,0,1,1,1Z" /></svg>
+    <>
+      <ChatHistoryViewer isOpen={!!selectedContact} onClose={handleCloseViewer} messages={historyMessages} isLoading={isLoadingHistory} contactInfo={selectedContact} />
+      <div className="dashboard-page">
+        <header className="dashboard-header">
+          <h1>Dashboard di {(slug)?.replace(/-/g, ' ')}</h1>
+          <p>Panoramica delle performance e delle conversazioni del tuo assistente AI.</p>
+          {planName && nextRenewalDate && (
+            <div className={`subscription-infocard plan--${planId}`}>
+              <div className="infocard-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg></div>
+              <div className="infocard-details">
+                <span className="plan-name"><strong>{planName}</strong></span>
+                <span className="renewal-date">Si rinnova il {nextRenewalDate}</span>
+              </div>
+              <a href={`mailto:info@melorosso.it?subject=Richiesta modifica/disdetta piano per ${slug}`} className="change-plan-link">Cambia o cancella</a>
             </div>
-            <div className="infocard-details">
-              <span className="plan-name"><strong>{planName}</strong></span>
-              <span className="renewal-date">Si rinnova il {nextRenewalDate}</span>
-            </div>
-            <a
-              href={`mailto:info@melorosso.it?subject=Richiesta modifica/disdetta piano per ${slug}`}
-              className="change-plan-link"
-            >
-              Cambia o cancella
-            </a>
+          )}
+          <div className="month-selector-wrapper">
+            <select className="month-selector" value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)}>
+              <option key="current" value="">{currentPeriodLabel}</option>
+              {availablePeriods.map((period) => (<option key={period.id} value={period.id}>{period.period_label}</option>))}
+            </select>
           </div>
-        )}
-
-        <div className="month-selector-wrapper">
-          <select className="month-selector" value={selectedPeriod} onChange={e => setSelectedPeriod(e.target.value)}>
-            <option key="current" value="">{currentPeriodLabel}</option>
-            {availablePeriods.map((period) => (<option key={period.id} value={period.id}>{period.period_label}</option>))}
-          </select>
-        </div>
-
-
-      </header>
-
-      <main>
-        <div className="metrics-grid">
-          <MetricCard iconPath="M3 21h2V3H3v18zm8 0h2V12h-2v9zm8 0h2V16h-2v5z" title="Uso Chat Mensili" value={chatMonth} description={<span style={{ color: getChatPctColor(chatPct) }}>Hai usato il {chatPct}% delle conversazioni</span>}>
-            <div className="progress-bar-container"><div className="progress-bar" style={{ width: `${chatPct}%`, backgroundColor: getChatPctColor(chatPct) }}></div></div>
-            {chatPct >= 100 && (<a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">Contattaci per aumentare il limite</a>)}
-          </MetricCard>
-          <MetricCard iconPath="M2.5 10.5 a15 15 0 0 1 19 0 M5.5 13.5 a10 10 0 0 1 13 0 M8.5 16.5 a5 5 0 0 1 7 0 M12 20 v.01" title="Sessioni attive" value={active} description="Conversazioni nell'ultima ora" />
-          <MetricCard iconPath="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" title="Messaggi totali" value={msgs.toLocaleString('it-IT')} description="Nel periodo selezionato" />
-          <MetricCard iconPath="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M12 12l4-4" title="Velocità risposta" value={`${avgRes} secondi`} description="Tempo di risposta medio">
-            {performanceStatus && (<div className={`performance-badge ${performanceStatus.className}`}><BadgeIcon path={performanceStatus.iconPath} /><span>{performanceStatus.label}</span></div>)}
-          </MetricCard>
-        </div>
-
-        {contactRequests.length > 0 && 
+        </header>
+        <main>
+          <div className="metrics-grid">
+            <MetricCard iconPath="M3 21h2V3H3v18zm8 0h2V12h-2v9zm8 0h2V16h-2v5z" title="Utilizzo Chat Mensile" value={chatMonth} description={<span style={{ color: getChatPctColor(chatPct) }}>Utilizzato il {chatPct}% del limite</span>}><div className="progress-bar-container"><div className="progress-bar" style={{ width: `${chatPct}%`, backgroundColor: getChatPctColor(chatPct) }}></div></div>{chatPct >= 100 && (<a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">Contattaci per aumentare il limite</a>)}</MetricCard>
+            <MetricCard iconPath="M2.5 10.5 a15 15 0 0 1 19 0 M5.5 13.5 a10 10 0 0 1 13 0 M8.5 16.5 a5 5 0 0 1 7 0 M12 20 v.01" title="Sessioni attive" value={active} description="Conversazioni nell'ultima ora" />
+            <MetricCard iconPath="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" title="Messaggi totali" value={msgs.toLocaleString('it-IT')} description="Nel periodo selezionato" />
+            <MetricCard iconPath="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M12 12l4-4" title="Velocità risposta" value={`${avgRes}s`} description="Tempo di risposta medio">
+              {performanceStatus && (<div className={`performance-badge ${performanceStatus.className}`}><BadgeIcon path={performanceStatus.iconPath} /><span>{performanceStatus.label}</span></div>)}
+            </MetricCard>
+          </div>
+          {contactRequests.length > 0 && 
             <ContactRequestsSection 
               requests={contactRequests} 
-              onShowHistory={handleOpenContactChat} 
+              onShowHistory={handleOpenContactChat}
+              hasMore={hasMoreContacts}
+              onLoadMore={handleLoadMoreContacts}
             />
           }
-
-        <ChatHistoryViewer 
-        isOpen={!!selectedContact}
-        onClose={handleCloseViewer}
-        messages={historyMessages}
-        isLoading={isLoadingHistory}
-        contactInfo={selectedContact}
-      />
-
-        <div className="content-sections-grid">
-          <FaqSection faqs={faqs} tips={tips} />
-          <InsightsSection preview={insightPreview} slug={slug!} />
-        </div>
-
-        
-
-        <div className="chat-viewer-container">
-          <div className={`session-list-pane ${selectedSessionId ? 'mobile-hidden' : ''}`}>
-            <div className="session-list-header"><h2>Conversazioni Recenti</h2></div>
-            <div className="session-list">
-              {sessionsList.length > 0 ? (sessionsList.map((s) => (<div key={s.session_id} className={`session-item ${selectedSessionId === s.session_id ? 'active' : ''}`} onClick={() => handleOpenChat(s.session_id)}><img src={s.avatarUrl} alt="avatar" className="session-avatar" /><div className="session-details"><div className="session-info"><span className="session-id">Sessione ...{s.session_id.slice(-6)}</span><span className="session-time">{new Date(s.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span></div><p className="session-preview">{s.preview || 'Nessun messaggio'}</p></div></div>))) : (<p className="empty-state-message">Nessuna sessione trovata.</p>)}
+          <div className="content-sections-grid">
+            <FaqSection faqs={faqs} tips={tips} />
+            <InsightsSection preview={insightPreview} slug={slug!} />
+          </div>
+          <div className="chat-viewer-container">
+            <div className={`session-list-pane ${selectedSessionId ? 'mobile-hidden' : ''}`}>
+              <div className="session-list-header"><h2>Conversazioni Recenti</h2></div>
+              <div className="session-list">
+                {sessionsList.length > 0 ? (sessionsList.map((s) => (<div key={s.session_id} className={`session-item ${selectedSessionId === s.session_id ? 'active' : ''}`} onClick={() => handleOpenChat(s.session_id)}><img src={s.avatarUrl} alt="avatar" className="session-avatar" /><div className="session-details"><div className="session-info"><span className="session-id">Sessione ...{s.session_id.slice(-6)}</span><span className="session-time">{new Date(s.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span></div><p className="session-preview">{s.preview || 'Nessun messaggio'}</p></div></div>))) : (<p className="empty-state-message">Nessuna sessione trovata.</p>)}
+              </div>
+            </div>
+            <div className={`message-pane ${selectedSessionId ? 'mobile-visible' : ''}`}>
+              {selectedSessionId ? (<><div className="message-pane-header"><button className="back-button" onClick={handleCloseChat}>←</button><h3>Dettaglio Chat</h3><span>ID: ...{selectedSessionId.slice(-6)}</span></div><div className="message-list">{isLoadingChat ? (<p className="empty-state-message">Caricamento...</p>) : (chatMessages.map((msg, i) => (<div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}><div className="message-bubble">{msg.content}</div></div>)))}</div></>) : (<div className="empty-state-message"><p>Seleziona una conversazione per visualizzarne i dettagli.</p></div>)}
             </div>
           </div>
-          <div className={`message-pane ${selectedSessionId ? 'mobile-visible' : ''}`}>
-            {selectedSessionId ? (<><div className="message-pane-header"><button className="back-button" onClick={handleCloseChat}>←</button><h3>Dettaglio Chat</h3><span>ID: ...{selectedSessionId.slice(-6)}</span></div><div className="message-list">{isLoadingChat ? (<p className="empty-state-message">Caricamento...</p>) : (chatMessages.map((msg, i) => (<div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}><div className="message-bubble">{msg.content}</div></div>)))}</div></>) : (<div className="empty-state-message"><p>Seleziona una conversazione per visualizzarne i dettagli.</p></div>)}
-          </div>
-        </div>
-
-
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 }
