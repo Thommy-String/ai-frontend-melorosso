@@ -22,8 +22,11 @@ export interface ChatWidgetProps {
 /* ---------- messaggio tipizzato ------------------------------------ */
 type TextMsg = { id: string; type: 'text'; role: 'user' | 'assistant'; content: string };
 type ButtonMsg = { id: string; type: 'button'; role: 'assistant'; label: string; action: string; class?: string };
-type Msg = TextMsg | ButtonMsg;
-
+// ✅ NUOVO TIPO
+type ProductCardData = { title: string; price: string; imageUrl: string; linkUrl: string; };
+type ProductCardMsg = { id: string; type: 'product_card'; role: 'assistant'; data: ProductCardData };
+// ✅ AGGIORNA Msg
+type Msg = TextMsg | ButtonMsg | ProductCardMsg;
 
 /* ---------- helper -------------------------------------------------- */
 type Timer = ReturnType<typeof setTimeout>;   // evita NodeJS.Timeout
@@ -119,8 +122,17 @@ export default function ChatWidget({
           h
             .filter(m => m.content !== '[streaming…]')
             .map<Msg>(m => {
-              try {                       // prova parse JSON
+              try {
                 const obj = JSON.parse(m.content);
+                // ✅ AGGIUNTA: Riconosce le Product Card dalla cronologia
+                if (obj?.type === 'product_card') {
+                  return {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    type: 'product_card',
+                    data: obj.data
+                  };
+                }
                 if (obj?.type === 'button') {
                   return {
                     id: crypto.randomUUID(),
@@ -141,7 +153,7 @@ export default function ChatWidget({
                 }
               } catch { /* non-JSON */ }
 
-              return {                    // fallback puro testo
+              return { // fallback puro testo
                 id: crypto.randomUUID(),
                 role: m.role,
                 type: 'text',
@@ -199,6 +211,15 @@ export default function ChatWidget({
 
       try {
         const parsed = JSON.parse(chunk);
+
+        if (parsed.type === 'product_card' && parsed.data) {
+          incoming.push({
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            type: 'product_card',
+            data: parsed.data
+          });
+        }
 
         /* – singolo oggetto ------------------------------------------------ */
         if (!Array.isArray(parsed)) {
@@ -348,6 +369,19 @@ export default function ChatWidget({
                   <div key={m.id} className={`message ${m.role}`}>
                     <a href={m.action} className={`chat-button ${m.class || ''}`}>
                       {m.label}
+                    </a>
+                  </div>
+                );
+              }
+              if (m.type === 'product_card') {
+                return (
+                  <div key={m.id} className="message assistant">
+                    <a href={m.data.linkUrl} target="_blank" rel="noopener noreferrer" className="product-card">
+                      <img src={m.data.imageUrl} alt={m.data.title} className="product-card-image" />
+                      <div className="product-card-info">
+                        <div className="product-card-title">{m.data.title}</div>
+                        <div className="product-card-price">{m.data.price}</div>
+                      </div>
                     </a>
                   </div>
                 );
