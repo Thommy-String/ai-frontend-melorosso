@@ -505,6 +505,17 @@ body {
   color: var(--c-danger);
 }
 
+
+.contact-request-item.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.contact-request-item.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--c-accent);
+}
+
 /* --- RESPONSIVE --- */
 @media (max-width: 1200px) {
   .content-sections-grid {

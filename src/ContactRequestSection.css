@@ -1,0 +1,138 @@
+/* --- SEZIONE RICHIESTE DI CONTATTO --- */
+
+.contact-requests-section {
+  margin: 48px 0px;
+}
+
+.contact-requests-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-request-item {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background-color: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.contact-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+
+.contact-info {
+  flex-grow: 1;
+}
+
+.contact-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.contact-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--c-text-primary);
+}
+
+.contact-phone {
+  font-size: 1rem;
+  color: var(--c-text-secondary);
+}
+
+.contact-detail {
+  font-size: 0.9rem;
+  color: var(--c-text-secondary);
+  line-height: 1.5;
+}
+.contact-detail strong {
+  color: var(--c-text-primary);
+}
+.contact-detail + .contact-detail {
+  margin-top: 0.5rem;
+}
+
+.contact-time {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--c-text-secondary);
+  padding-top: 4px;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-new {
+  background-color: var(--c-success-soft);
+  color: var(--c-success);
+}
+
+/* --- Stili Responsive per la Sezione Contatti --- */
+
+@media (max-width: 768px) {
+  .contact-request-item {
+    /* Passiamo da flex a un layout a griglia più controllabile */
+    display: grid;
+    grid-template-columns: auto 1fr; /* Colonna per l'icona, il resto per le info */
+    grid-template-areas: 
+      "icon info"
+      "details details"; /* I dettagli (email/note) vanno sotto */
+    
+    gap: 0.75rem 1rem; /* Riduciamo lo spazio */
+    padding: 1rem;     /* Riduciamo il padding */
+  }
+
+  .contact-icon {
+    grid-area: icon;
+    margin-top: 2px; /* Allineamento fine */
+  }
+
+  .contact-info {
+    grid-area: info;
+  }
+  
+  .contact-main {
+    flex-wrap: wrap; /* Permette al badge di andare a capo */
+    gap: 0.5rem 0.75rem;
+  }
+
+  .contact-name {
+    font-size: 1rem; /* Riduciamo leggermente il font */
+  }
+
+  /* Spostiamo la data sotto, allineata a destra, per risparmiare spazio */
+  .contact-time {
+    grid-area: details; /* La posizioniamo nell'area in basso */
+    text-align: right;
+    width: 100%;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--c-border);
+  }
+  
+
+}

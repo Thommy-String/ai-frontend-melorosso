@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import './Dashboard.css';
-
+import ContactRequestsSection, { type ContactRequest } from '../ContactRequestSection';
+import ChatHistoryViewer from '../ChatHistoryViewer';
 // --- Interfacce e Costanti ---
 const API = 'https://ai-backend-melorosso.onrender.com';
 interface Session { session_id: string; created_at: string; updated_at: string; message_count: string; preview: string | null; avatarUrl?: string; }
@@ -44,6 +45,10 @@ export default function Dashboard() {
   const [planName, setPlanName] = useState<string | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [nextRenewalDate, setNextRenewalDate] = useState<string | null>(null);
+  const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
+  const [selectedContact, setSelectedContact] = useState<ContactRequest | null>(null);
+  const [historyMessages, setHistoryMessages] = useState<Message[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('jwt');
@@ -96,17 +101,19 @@ export default function Dashboard() {
 
     const fetchInitialData = async () => {
       try {
-        const [historyRes, sessionsRes, faqRes, insightsRes] = await Promise.all([
+        const [historyRes, sessionsRes, faqRes, insightsRes, contactsRes] = await Promise.all([
           fetch(`${API}/stats/subscription/history/${slug}`, { headers }),
           fetch(`${API}/stats/sessions/${slug}`, { headers }),
           fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-          fetch(`${API}/stats/insights/${slug}?days=30`, { headers })
+          fetch(`${API}/stats/insights/${slug}?days=30`, { headers }),
+          fetch(`${API}/stats/contact-requests/${slug}`, { headers })
         ]);
-        if ([historyRes, sessionsRes, faqRes, insightsRes].some(handleAuthError)) return;
-        const [historyData, sessionsData, faqData, insightsData] = await Promise.all([historyRes.json(), sessionsRes.json(), faqRes.json(), insightsRes.json()]);
+        if ([historyRes, sessionsRes, faqRes, insightsRes, contactsRes].some(handleAuthError)) return;
+        const [historyData, sessionsData, faqData, insightsData, contactsData] = await Promise.all([historyRes.json(), sessionsRes.json(), faqRes.json(), insightsRes.json(), contactsRes.json()]);
         setAvailablePeriods(historyData);
         setFaqs(faqData.faqs ?? []);
         setTips(faqData.tips ?? '');
+        setContactRequests(contactsData);
         const { summary = '', bullets = [], actions = [] } = insightsData;
         let previewSrc = summary.trim() || bullets?.[0] || actions?.[0] || '';
         const MAX_PREVIEW = 250;
@@ -124,6 +131,25 @@ export default function Dashboard() {
     }
     fetchDataForPeriod();
   }, [slug, selectedPeriod, setToken]);
+
+
+  // ✅ NUOVA FUNZIONE per aprire il modale e caricare i dati
+ const handleOpenContactChat = (request: ContactRequest) => {
+    const token = localStorage.getItem('jwt');
+    if (!token) return;
+    
+    setSelectedContact(request); // Salva i dati del contatto selezionato
+    setIsLoadingHistory(true);
+    setHistoryMessages([]);
+
+    fetch(`${API}/chat/${request.session_id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => { setHistoryMessages(data.chatLogs || []); })
+      .catch(err => console.error("Errore nel caricamento della cronologia chat:", err))
+      .finally(() => setIsLoadingHistory(false));
+  };
+
+const handleCloseViewer = () => setSelectedContact(null);
 
   const handleOpenChat = (sessionId: string) => {
     const token = localStorage.getItem('jwt');
@@ -147,10 +173,10 @@ export default function Dashboard() {
         <h1>Dashboard di {(slug)?.replace(/-/g, ' ')}</h1>
         <p>Panoramica delle performance e delle conversazioni del tuo assistente AI.</p>
 
-        {planName && nextRenewalDate &&(
+        {planName && nextRenewalDate && (
           <div className={`subscription-infocard plan--${planId}`}>
             <div className="infocard-icon">
-              <svg fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-name="Layer 1"><path d="M17,2H5A1,1,0,0,0,4,3V19a1,1,0,0,0,1,1H6v1a1,1,0,0,0,1,1H7a1,1,0,0,0,1-1V20h9a3,3,0,0,0,3-3V5A3,3,0,0,0,17,2ZM14,18H6V4h8Zm4-1a1,1,0,0,1-1,1H16V4h1a1,1,0,0,1,1,1Z"/></svg>
+              <svg fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-name="Layer 1"><path d="M17,2H5A1,1,0,0,0,4,3V19a1,1,0,0,0,1,1H6v1a1,1,0,0,0,1,1H7a1,1,0,0,0,1-1V20h9a3,3,0,0,0,3-3V5A3,3,0,0,0,17,2ZM14,18H6V4h8Zm4-1a1,1,0,0,1-1,1H16V4h1a1,1,0,0,1,1,1Z" /></svg>
             </div>
             <div className="infocard-details">
               <span className="plan-name"><strong>{planName}</strong></span>
@@ -172,7 +198,7 @@ export default function Dashboard() {
           </select>
         </div>
 
-        
+
       </header>
 
       <main>
@@ -188,10 +214,27 @@ export default function Dashboard() {
           </MetricCard>
         </div>
 
+        {contactRequests.length > 0 && 
+            <ContactRequestsSection 
+              requests={contactRequests} 
+              onShowHistory={handleOpenContactChat} 
+            />
+          }
+
+        <ChatHistoryViewer 
+        isOpen={!!selectedContact}
+        onClose={handleCloseViewer}
+        messages={historyMessages}
+        isLoading={isLoadingHistory}
+        contactInfo={selectedContact}
+      />
+
         <div className="content-sections-grid">
           <FaqSection faqs={faqs} tips={tips} />
           <InsightsSection preview={insightPreview} slug={slug!} />
         </div>
+
+        
 
         <div className="chat-viewer-container">
           <div className={`session-list-pane ${selectedSessionId ? 'mobile-hidden' : ''}`}>
@@ -204,6 +247,8 @@ export default function Dashboard() {
             {selectedSessionId ? (<><div className="message-pane-header"><button className="back-button" onClick={handleCloseChat}>←</button><h3>Dettaglio Chat</h3><span>ID: ...{selectedSessionId.slice(-6)}</span></div><div className="message-list">{isLoadingChat ? (<p className="empty-state-message">Caricamento...</p>) : (chatMessages.map((msg, i) => (<div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}><div className="message-bubble">{msg.content}</div></div>)))}</div></>) : (<div className="empty-state-message"><p>Seleziona una conversazione per visualizzarne i dettagli.</p></div>)}
           </div>
         </div>
+
+
       </main>
     </div>
   );
