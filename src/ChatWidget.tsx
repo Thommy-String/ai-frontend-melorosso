@@ -115,46 +115,31 @@ export default function ChatWidget({
     };
   }, []);
 
-/* -------------------------------------------------- */
-/* History al mount - VERSIONE CORRETTA              */
-/* -------------------------------------------------- */
-useEffect(() => {
-  getHistory(sessionId)
-    .then(h =>
-      setMessages(
-        h
-          .filter(m => m.content && !m.content.startsWith('[streaming'))
-          .flatMap<Msg>(m => { // ✅ USA flatMap per trasformare una riga in più messaggi
-            try {
-              const parsedData = JSON.parse(m.content);
-              // ✅ Normalizza sempre in un array per gestire sia oggetti singoli che array
-              const items = Array.isArray(parsedData) ? parsedData : [parsedData];
-
-              return items.map(obj => {
-                if (obj?.type === 'product_card') {
-                  return { id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data };
-                }
-                if (obj?.type === 'map_card') {
-                  return { id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data };
-                }
-                if (obj?.type === 'button') {
-                  return { id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class };
-                }
-                if (obj?.type === 'text') {
-                  // Per i messaggi di testo salvati come JSON, il ruolo è sempre dell'assistente
-                  return { id: crypto.randomUUID(), role: 'assistant', type: 'text', content: String(obj.content ?? '') };
-                }
-                return null; // Ignora elementi non riconosciuti nell'array
-              }).filter(Boolean) as Msg[];
-
-            } catch { /* non-JSON */ }
-            // Se il parsing fallisce, è un messaggio di testo semplice
-            return [{ id: crypto.randomUUID(), role: m.role, type: 'text', content: m.content }];
-          })
-      )
-    )
-    .catch(() => { });
-}, [sessionId, slug]);
+  /* -------------------------------------------------- */
+  /* History al mount - VERSIONE CORRETTA              */
+  /* -------------------------------------------------- */
+  useEffect(() => {
+    getHistory(sessionId)
+      .then(h =>
+        setMessages(
+          h.filter(m => m.content && !m.content.startsWith('[streaming'))
+            .flatMap<Msg>(m => {
+              try {
+                const items = JSON.parse(m.content);
+                const msgs = Array.isArray(items) ? items : [items];
+                return msgs.map(obj => {
+                  if (obj?.type === 'product_card') return { id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data };
+                  if (obj?.type === 'map_card') return { id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data };
+                  if (obj?.type === 'button') return { id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class };
+                  if (obj?.type === 'text') return { id: crypto.randomUUID(), role: 'assistant', type: 'text', content: String(obj.content ?? '') };
+                  return null;
+                }).filter(Boolean) as Msg[];
+              } catch { /* non-JSON */ }
+              return [{ id: crypto.randomUUID(), role: m.role, type: 'text', content: m.content }];
+            })
+        )
+      ).catch(() => { });
+  }, [sessionId, slug]);
 
   /* -------------------------------------------------- */
   /*  Autoscroll                                        */
@@ -191,132 +176,44 @@ useEffect(() => {
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {
-      if (chunk === '[END]') {        // fine stream
+      if (chunk === '[END]') {
         es.close();
         setLoading(false);
         return;
       }
 
-      /* 2️⃣ normalizziamo il chunk               */
       const incoming: Msg[] = [];
-
       try {
         const parsed = JSON.parse(chunk);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
 
-        if (parsed.type === 'product_card' && parsed.data) {
-          incoming.push({
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            type: 'product_card',
-            data: parsed.data
-          });
-        }
+        items.forEach((obj: any) => {
+          if (obj.type === 'product_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data });
+          else if (obj.type === 'button') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class });
+          else if (obj.type === 'text') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: obj.content });
+          else if (obj.type === 'map_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data });
+        });
 
-        /* – singolo oggetto ------------------------------------------------ */
-        if (!Array.isArray(parsed)) {
-          if (parsed.type === 'button') {
-            incoming.push({
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              type: 'button',
-              label: parsed.label ?? 'Apri',
-              action: parsed.action ?? '#',
-              class: parsed.class ?? ''
-            });
-          } else if (parsed.type === 'text') {
-            incoming.push({
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              type: 'text',
-              content: parsed.content ?? ''
-            });
-          }
-          else if (parsed.type === 'map_card' && parsed.data) {
-            incoming.push({
-              id: crypto.randomUUID(),
-              role: 'assistant',
-              type: 'map_card',
-              data: parsed.data
-            });
-          }
-        }
+      } catch {
+        incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: chunk });
+      }
 
-        /* – array di oggetti ------------------------------------------------ */
-        if (Array.isArray(parsed)) {
-          parsed.forEach((obj: any) => {
-            if (obj.type === 'button') {
-              incoming.push({
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                type: 'button',
-                label: obj.label ?? 'Apri',
-                action: obj.action ?? '#',
-                class: obj.class ?? ''
-              });
-            } else if (obj.type === 'text') {
-              incoming.push({
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                type: 'text',
-                content: obj.content ?? ''
-              });
-            } else if (obj.type === 'map_card') {          // 🆕 fuori dal ramo button
-              incoming.push({
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                type: 'map_card',
-                data: obj.data
-              });
+      if (incoming.length > 0) {
+        setMessages(prev => {
+          const out = [...prev];
+          let last = out[out.length - 1];
+
+          incoming.forEach(msg => {
+            if (msg.type === 'text' && last?.type === 'text' && last.role === 'assistant') {
+              last.content += msg.content;
+            } else {
+              out.push(msg);
+              last = msg;
             }
           });
-        }
-      } catch {
-        /* non-JSON → verrà gestito sotto */
-      }
-
-      /* – fallback testo semplice ------------------------------------------ */
-      if (incoming.length === 0) {
-        incoming.push({
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          type: 'text',
-          content: chunk.replace(/\n+/g, '')
+          return out;
         });
       }
-
-/* ---------- helper di tipo (fuori dal componente) ----------------- */
-function isTextMsg(m: Msg): m is TextMsg {
-  return m.type === 'text';
-}
-
-/* 3️⃣ merge / append nello stato messaggi --------------------------- */
-setMessages(prev => {
-  const out: Msg[] = [...prev];
-  let last: Msg | undefined = out[out.length - 1];
-
-  incoming.forEach(msg => {
-    // merge SOLO se entrambi sono TextMsg dell’assistente
-    if (
-      isTextMsg(msg) &&
-      last &&                       // <-- protegge da undefined
-      isTextMsg(last) &&
-      last.role === 'assistant'
-    ) {
-      const merged: TextMsg = {
-        ...last,
-        content: last.content + msg.content        // nessuno spazio extra
-      };
-
-      out[out.length - 1] = merged;
-      last = merged;                               // aggiorna il puntatore
-    } else {
-      out.push(msg);
-      last = msg;
-    }
-  });
-
-  return out;
-});
     });
 
     /* ---------- error ---------- */
