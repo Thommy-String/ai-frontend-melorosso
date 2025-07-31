@@ -115,67 +115,46 @@ export default function ChatWidget({
     };
   }, []);
 
-  /* -------------------------------------------------- */
-  /*  History al mount                                  */
-  /* -------------------------------------------------- */
-  useEffect(() => {
-    getHistory(sessionId)
-      .then(h =>
-        setMessages(
-          h
-            .filter(m => m.content !== '[streaming…]')
-            .map<Msg>(m => {
-              try {
-                const obj = JSON.parse(m.content);
-                // ✅ AGGIUNTA: Riconosce le Product Card dalla cronologia
+/* -------------------------------------------------- */
+/* History al mount - VERSIONE CORRETTA              */
+/* -------------------------------------------------- */
+useEffect(() => {
+  getHistory(sessionId)
+    .then(h =>
+      setMessages(
+        h
+          .filter(m => m.content && !m.content.startsWith('[streaming'))
+          .flatMap<Msg>(m => { // ✅ USA flatMap per trasformare una riga in più messaggi
+            try {
+              const parsedData = JSON.parse(m.content);
+              // ✅ Normalizza sempre in un array per gestire sia oggetti singoli che array
+              const items = Array.isArray(parsedData) ? parsedData : [parsedData];
+
+              return items.map(obj => {
                 if (obj?.type === 'product_card') {
-                  return {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    type: 'product_card',
-                    data: obj.data
-                  };
-                }
-                if (obj?.type === 'button') {
-                  return {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    type: 'button',
-                    label: obj.label ?? 'Apri',
-                    action: obj.action ?? '#',
-                    class: obj.class ?? ''
-                  };
-                }
-                if (obj?.type === 'text') {
-                  return {
-                    id: crypto.randomUUID(),
-                    role: m.role,
-                    type: 'text',
-                    content: String(obj.content ?? '')
-                  };
+                  return { id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data };
                 }
                 if (obj?.type === 'map_card') {
-                  return {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    type: 'map_card',
-                    data: obj.data          // {title,mapUrl,linkUrl}
-                  };
+                  return { id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data };
                 }
+                if (obj?.type === 'button') {
+                  return { id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class };
+                }
+                if (obj?.type === 'text') {
+                  // Per i messaggi di testo salvati come JSON, il ruolo è sempre dell'assistente
+                  return { id: crypto.randomUUID(), role: 'assistant', type: 'text', content: String(obj.content ?? '') };
+                }
+                return null; // Ignora elementi non riconosciuti nell'array
+              }).filter(Boolean) as Msg[];
 
-              } catch { /* non-JSON */ }
-
-              return { // fallback puro testo
-                id: crypto.randomUUID(),
-                role: m.role,
-                type: 'text',
-                content: m.content
-              };
-            })
-        )
+            } catch { /* non-JSON */ }
+            // Se il parsing fallisce, è un messaggio di testo semplice
+            return [{ id: crypto.randomUUID(), role: m.role, type: 'text', content: m.content }];
+          })
       )
-      .catch(() => { });
-  }, [sessionId, slug]);
+    )
+    .catch(() => { });
+}, [sessionId, slug]);
 
   /* -------------------------------------------------- */
   /*  Autoscroll                                        */
@@ -305,7 +284,7 @@ export default function ChatWidget({
         });
       }
 
-      /* ---------- helper di tipo ---------------------------------------- */
+/* ---------- helper di tipo (fuori dal componente) ----------------- */
 function isTextMsg(m: Msg): m is TextMsg {
   return m.type === 'text';
 }
@@ -313,34 +292,26 @@ function isTextMsg(m: Msg): m is TextMsg {
 /* 3️⃣ merge / append nello stato messaggi --------------------------- */
 setMessages(prev => {
   const out: Msg[] = [...prev];
-
-  let last = out[out.length - 1];          // potrebbe essere undefined
+  let last: Msg | undefined = out[out.length - 1];
 
   incoming.forEach(msg => {
-    const canMerge =
-      isTextMsg(msg) &&                    // il nuovo è testo
-      isTextMsg(last as Msg) &&            // l'ultimo è testo
-      (last as TextMsg).role === 'assistant';
-
-    if (canMerge) {
-      const lastTxt = last as TextMsg;
-
-      const needSpace =
-        lastTxt.content.length > 0 &&
-        !/\s$/.test(lastTxt.content) &&     // non finisce già con spazio
-        !/^\s/.test(msg.content);           // nuovo non inizia con spazio
-
-      // costruiamo un nuovo TextMsg completo
+    // merge SOLO se entrambi sono TextMsg dell’assistente
+    if (
+      isTextMsg(msg) &&
+      last &&                       // <-- protegge da undefined
+      isTextMsg(last) &&
+      last.role === 'assistant'
+    ) {
       const merged: TextMsg = {
-        ...lastTxt,
-        content: lastTxt.content + (needSpace ? ' ' : '') + msg.content
+        ...last,
+        content: last.content + msg.content        // nessuno spazio extra
       };
 
       out[out.length - 1] = merged;
-      last = merged;                       // aggiorna puntatore
+      last = merged;                               // aggiorna il puntatore
     } else {
       out.push(msg);
-      last = msg;                          // aggiorna puntatore
+      last = msg;
     }
   });
 
