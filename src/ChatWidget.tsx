@@ -53,6 +53,7 @@ export default function ChatWidget({
   // ⬇️  Stati da usare nell'useEffect
   const [badgeIdx, setBadgeIdx] = useState<number>(0);   // indice messaggio
   const [visible, setVisible] = useState<boolean>(false); // true = .show
+  const streamEndedRef = useRef(false);
 
   useEffect(() => {
     if (!badgeMsgs.length) return;
@@ -161,6 +162,7 @@ export default function ChatWidget({
     ]);
     setInput('');
     setLoading(true);
+    streamEndedRef.current = false;
 
     const payload: SendOpts = {
       client_slug: slug,
@@ -178,12 +180,15 @@ export default function ChatWidget({
     /* ---------- data ---------- */
     es.onmessage(chunk => {
       console.log('⬇️ [FRONTEND] Received chunk:', chunk);
-      if (chunk === '[END]') {
-         console.log('🔚 [FRONTEND] Stream ended.');
-        es.close();
-        setLoading(false);
-        return;
-      }
+      if (chunk === '[END]' && !streamEndedRef.current) {
+      streamEndedRef.current = true; // Imposta il flag per non rientrare
+      console.log('🔚 [FRONTEND] Stream ended.'); // 🪵 [FRONTEND-LOG]
+      es.close();
+      setLoading(false);
+      return;
+    }
+
+    if (chunk === '[END]') return;
 
       const incoming: Msg[] = [];
       try {
