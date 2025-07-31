@@ -305,28 +305,47 @@ export default function ChatWidget({
         });
       }
 
-      /* 3️⃣ merge / append nello stato messaggi ---------------------------- */
-      setMessages(prev => {
-        const out = [...prev];
-        const last = out[out.length - 1];
+      /* ---------- helper di tipo ---------------------------------------- */
+function isTextMsg(m: Msg): m is TextMsg {
+  return m.type === 'text';
+}
 
-        incoming.forEach(msg => {
-          if (
-            msg.type === 'text' &&
-            last?.role === 'assistant' &&
-            last.type === 'text'
-          ) {
-            out[out.length - 1] = {
-              ...last,
-              content: last.content + msg.content
-            };
-          } else {
-            out.push(msg);
-          }
-        });
+/* 3️⃣ merge / append nello stato messaggi --------------------------- */
+setMessages(prev => {
+  const out: Msg[] = [...prev];
 
-        return out;
-      });
+  let last = out[out.length - 1];          // potrebbe essere undefined
+
+  incoming.forEach(msg => {
+    const canMerge =
+      isTextMsg(msg) &&                    // il nuovo è testo
+      isTextMsg(last as Msg) &&            // l'ultimo è testo
+      (last as TextMsg).role === 'assistant';
+
+    if (canMerge) {
+      const lastTxt = last as TextMsg;
+
+      const needSpace =
+        lastTxt.content.length > 0 &&
+        !/\s$/.test(lastTxt.content) &&     // non finisce già con spazio
+        !/^\s/.test(msg.content);           // nuovo non inizia con spazio
+
+      // costruiamo un nuovo TextMsg completo
+      const merged: TextMsg = {
+        ...lastTxt,
+        content: lastTxt.content + (needSpace ? ' ' : '') + msg.content
+      };
+
+      out[out.length - 1] = merged;
+      last = merged;                       // aggiorna puntatore
+    } else {
+      out.push(msg);
+      last = msg;                          // aggiorna puntatore
+    }
+  });
+
+  return out;
+});
     });
 
     /* ---------- error ---------- */
