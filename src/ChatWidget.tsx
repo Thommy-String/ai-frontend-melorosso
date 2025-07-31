@@ -22,7 +22,6 @@ export interface ChatWidgetProps {
 /* ---------- messaggio tipizzato ------------------------------------ */
 type TextMsg = { id: string; type: 'text'; role: 'user' | 'assistant'; content: string };
 type ButtonMsg = { id: string; type: 'button'; role: 'assistant'; label: string; action: string; class?: string };
-// ✅ NUOVO TIPO
 type ProductCardData = { title: string; price: string; imageUrl: string; linkUrl: string; };
 type ProductCardMsg = { id: string; type: 'product_card'; role: 'assistant'; data: ProductCardData };
 
@@ -172,11 +171,15 @@ export default function ChatWidget({
     };
     pageRef.current = null;
 
+    console.log('➡️ [FRONTEND] Sending payload:', payload);
+
     const es = sendMessageStream(payload);
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {
+      console.log('⬇️ [FRONTEND] Received chunk:', chunk);
       if (chunk === '[END]') {
+         console.log('🔚 [FRONTEND] Stream ended.');
         es.close();
         setLoading(false);
         return;
@@ -186,6 +189,7 @@ export default function ChatWidget({
       try {
         const parsed = JSON.parse(chunk);
         const items = Array.isArray(parsed) ? parsed : [parsed];
+        console.log('📦 [FRONTEND] Parsed JSON items:', items);
 
         items.forEach((obj: any) => {
           if (obj.type === 'product_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data });
@@ -195,11 +199,14 @@ export default function ChatWidget({
         });
 
       } catch {
+        console.log('✍️ [FRONTEND] Received raw text chunk:', chunk);
         incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: chunk });
       }
 
       if (incoming.length > 0) {
+        console.log('✨ [FRONTEND] Updating state with incoming messages:', incoming);
         setMessages(prev => {
+          console.log('🔄 [FRONTEND] State BEFORE update:', prev);
           const out = [...prev];
           let last = out[out.length - 1];
 
@@ -211,6 +218,7 @@ export default function ChatWidget({
               last = msg;
             }
           });
+           console.log('✅ [FRONTEND] State AFTER update:', out);
           return out;
         });
       }
@@ -218,6 +226,7 @@ export default function ChatWidget({
 
     /* ---------- error ---------- */
     es.onerror(() => {
+       console.error('❌ [FRONTEND] SSE Error!');
       es.close();
       setLoading(false);
       setMessages(m => [
