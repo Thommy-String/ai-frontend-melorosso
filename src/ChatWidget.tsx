@@ -204,8 +204,8 @@ export default function ChatWidget({
         if (parsed.type === 'chunk' && typeof parsed.text === 'string') {
           console.log(`✍️ [FRONTEND] Handling text chunk:`, JSON.stringify(parsed.text));
           incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: parsed.text });
-        
-        // CASO 2: È un messaggio finale (card, bottone) o un array di messaggi finali
+
+          // CASO 2: È un messaggio finale (card, bottone) o un array di messaggi finali
         } else {
           console.log('📦 [FRONTEND] Parsed final message(s):', parsed);
           const items = Array.isArray(parsed) ? parsed : [parsed];
@@ -360,12 +360,26 @@ export default function ChatWidget({
 
           {/* INPUT */}
           <div className="chat-input">
-            <input value={input}
+            <input
+              value={input}
               placeholder={startText}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && doSend()} />
-            <button onClick={doSend}
-              disabled={loading || !input.trim()}>Invia</button>
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault(); // Previene l'andare a capo
+                  doSend();
+                }
+              }}
+            />
+            <button
+              onClick={doSend}
+              disabled={loading || !input.trim()}
+              aria-label="Invia messaggio"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

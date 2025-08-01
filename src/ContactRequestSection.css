@@ -1,7 +1,7 @@
 /* --- SEZIONE RICHIESTE DI CONTATTO --- */
 
 .contact-requests-section {
-  margin: 48px 0px;
+  margin: var(--margin-lg) 0px;
 }
 
 .contact-requests-list {

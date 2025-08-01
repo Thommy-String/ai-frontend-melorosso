@@ -196,7 +196,7 @@ export default function Dashboard() {
               <div className="infocard-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg></div>
               <div className="infocard-details">
                 <span className="plan-name"><strong>{planName}</strong></span>
-                <span className="renewal-date">Si rinnova il {nextRenewalDate}</span>
+                <span className="renewal-date">Rinnovo {nextRenewalDate}</span>
               </div>
               <a href={`mailto:info@melorosso.it?subject=Richiesta modifica/disdetta piano per ${slug}`} className="change-plan-link">Cambia o cancella</a>
             </div>
@@ -210,9 +210,9 @@ export default function Dashboard() {
         </header>
         <main>
           <div className="metrics-grid">
-            <MetricCard iconPath="M3 21h2V3H3v18zm8 0h2V12h-2v9zm8 0h2V16h-2v5z" title="Utilizzo Chat Mensile" value={chatMonth} description={<span style={{ color: getChatPctColor(chatPct) }}>Utilizzato il {chatPct}% del limite</span>}><div className="progress-bar-container"><div className="progress-bar" style={{ width: `${chatPct}%`, backgroundColor: getChatPctColor(chatPct) }}></div></div>{chatPct >= 100 && (<a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">Contattaci per aumentare il limite</a>)}</MetricCard>
-            <MetricCard iconPath="M2.5 10.5 a15 15 0 0 1 19 0 M5.5 13.5 a10 10 0 0 1 13 0 M8.5 16.5 a5 5 0 0 1 7 0 M12 20 v.01" title="Sessioni attive" value={active} description="Conversazioni nell'ultima ora" />
-            <MetricCard iconPath="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" title="Messaggi totali" value={msgs.toLocaleString('it-IT')} description="Nel periodo selezionato" />
+            <MetricCard iconPath="M3 21h2V3H3v18zm8 0h2V12h-2v9zm8 0h2V16h-2v5z" title="Chat usate" value={chatMonth} description={<span style={{ color: getChatPctColor(chatPct) }}>Utilizzato il {chatPct}% del limite</span>}><div className="progress-bar-container"><div className="progress-bar" style={{ width: `${chatPct}%`, backgroundColor: getChatPctColor(chatPct) }}></div></div>{chatPct >= 100 && (<a className="limit-reached-link" href="mailto:info@melorosso.it?subject=Richiesta%20aumento%20limite%20chat">Contattaci per aumentare il limite</a>)}</MetricCard>
+            <MetricCard iconPath="M2.5 10.5 a15 15 0 0 1 19 0 M5.5 13.5 a10 10 0 0 1 13 0 M8.5 16.5 a5 5 0 0 1 7 0 M12 20 v.01" title="Utenti online" value={active} description="Conversazioni nell'ultima ora" />
+            <MetricCard iconPath="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" title="Messaggi scambiati" value={msgs.toLocaleString('it-IT')} description="Nel periodo selezionato" />
             <MetricCard iconPath="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M12 12l4-4" title="Velocità risposta" value={`${avgRes}s`} description="Tempo di risposta medio">
               {performanceStatus && (<div className={`performance-badge ${performanceStatus.className}`}><BadgeIcon path={performanceStatus.iconPath} /><span>{performanceStatus.label}</span></div>)}
             </MetricCard>
