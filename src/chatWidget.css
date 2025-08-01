@@ -205,6 +205,11 @@ html {
   border: 1px solid rgba(0,0,0,0.08);
   align-self: flex-start;
   border-bottom-left-radius: 4px;
+  white-space: pre-wrap;
+}
+
+.message p {
+  margin: 0px;
 }
 
 

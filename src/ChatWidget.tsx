@@ -288,6 +288,7 @@ export default function ChatWidget({
               console.log(`[FRONTEND RENDER] About to render text message content:`, JSON.stringify(m.content));
               // Messaggio di testo normale
               if (m.type === 'text') {
+                console.log('>>> FRONTEND RENDER:', JSON.stringify(m.content));
                 return (
                   <div key={m.id} className={`message ${m.role}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
