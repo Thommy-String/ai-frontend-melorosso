@@ -181,35 +181,49 @@ export default function ChatWidget({
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {
+      // Log per vedere i dati grezzi in arrivo dalla rete
       console.log(`[FRONTEND NET] Received chunk from network:`, JSON.stringify(chunk));
+
+      // Gestione della fine dello stream (logica corretta, non va cambiata)
       if (chunk === '[END]' && !streamEndedRef.current) {
-        streamEndedRef.current = true; // Imposta il flag per non rientrare
-        console.log('🔚 [FRONTEND] Stream ended.'); // 🪵 [FRONTEND-LOG]
+        streamEndedRef.current = true;
+        console.log('🔚 [FRONTEND] Stream ended.');
         es.close();
         setLoading(false);
         return;
       }
-
       if (chunk === '[END]') return;
 
       const incoming: Msg[] = [];
       try {
         const parsed = JSON.parse(chunk);
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        console.log('📦 [FRONTEND] Parsed JSON items:', items);
 
-        items.forEach((obj: any) => {
-          if (obj.type === 'product_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data });
-          else if (obj.type === 'button') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class });
-          else if (obj.type === 'text') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: obj.content });
-          else if (obj.type === 'map_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data });
-        });
+        // ✅ NUOVA LOGICA: Gestiamo i due tipi di messaggi JSON
 
-      } catch {
-        console.log(`[FRONTEND PARSE] Handling as raw text chunk:`, JSON.stringify(chunk));
+        // CASO 1: È un chunk di testo in streaming, incapsulato in JSON
+        if (parsed.type === 'chunk' && typeof parsed.text === 'string') {
+          console.log(`✍️ [FRONTEND] Handling text chunk:`, JSON.stringify(parsed.text));
+          incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: parsed.text });
+        
+        // CASO 2: È un messaggio finale (card, bottone) o un array di messaggi finali
+        } else {
+          console.log('📦 [FRONTEND] Parsed final message(s):', parsed);
+          const items = Array.isArray(parsed) ? parsed : [parsed];
+          items.forEach((obj: any) => {
+            if (obj.type === 'product_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'product_card', data: obj.data });
+            else if (obj.type === 'button') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'button', label: obj.label, action: obj.action, class: obj.class });
+            else if (obj.type === 'text') incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: obj.content });
+            else if (obj.type === 'map_card' && obj.data) incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'map_card', data: obj.data });
+          });
+        }
+      } catch (error) {
+        // Questo blocco ora serve come fallback nel raro caso in cui arrivi testo non JSON
+        console.log(`[FRONTEND FALLBACK] Handling as raw, non-JSON text:`, JSON.stringify(chunk));
         incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: chunk });
       }
 
+      // Questa parte finale per aggiornare lo stato è perfetta e non necessita di modifiche.
+      // Ora riceverà i caratteri "\n" correttamente e li concatenerà.
       if (incoming.length > 0) {
         console.log('✨ [FRONTEND] Updating state with incoming messages:', incoming);
         setMessages(prev => {
