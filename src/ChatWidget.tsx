@@ -179,7 +179,7 @@ export default function ChatWidget({
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {
-      console.log('⬇️ [FRONTEND] Received chunk:', chunk);
+      console.log(`[FRONTEND NET] Received chunk from network:`, JSON.stringify(chunk));
       if (chunk === '[END]' && !streamEndedRef.current) {
       streamEndedRef.current = true; // Imposta il flag per non rientrare
       console.log('🔚 [FRONTEND] Stream ended.'); // 🪵 [FRONTEND-LOG]
@@ -204,7 +204,7 @@ export default function ChatWidget({
         });
 
       } catch {
-        console.log('✍️ [FRONTEND] Received raw text chunk:', chunk);
+        console.log(`[FRONTEND PARSE] Handling as raw text chunk:`, JSON.stringify(chunk));
         incoming.push({ id: crypto.randomUUID(), role: 'assistant', type: 'text', content: chunk });
       }
 
@@ -283,6 +283,7 @@ export default function ChatWidget({
           {/* MESSAGGI */}
           <div className="chat-messages">
             {messages.map(m => {
+              console.log(`[FRONTEND RENDER] About to render text message content:`, JSON.stringify(m.content));
               // Messaggio di testo normale
               if (m.type === 'text') {
                 return (
