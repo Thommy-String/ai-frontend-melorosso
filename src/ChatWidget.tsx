@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   sendMessageStream,
   getHistory,
@@ -181,14 +183,14 @@ export default function ChatWidget({
     es.onmessage(chunk => {
       console.log(`[FRONTEND NET] Received chunk from network:`, JSON.stringify(chunk));
       if (chunk === '[END]' && !streamEndedRef.current) {
-      streamEndedRef.current = true; // Imposta il flag per non rientrare
-      console.log('🔚 [FRONTEND] Stream ended.'); // 🪵 [FRONTEND-LOG]
-      es.close();
-      setLoading(false);
-      return;
-    }
+        streamEndedRef.current = true; // Imposta il flag per non rientrare
+        console.log('🔚 [FRONTEND] Stream ended.'); // 🪵 [FRONTEND-LOG]
+        es.close();
+        setLoading(false);
+        return;
+      }
 
-    if (chunk === '[END]') return;
+      if (chunk === '[END]') return;
 
       const incoming: Msg[] = [];
       try {
@@ -223,7 +225,7 @@ export default function ChatWidget({
               last = msg;
             }
           });
-           console.log('✅ [FRONTEND] State AFTER update:', out);
+          console.log('✅ [FRONTEND] State AFTER update:', out);
           return out;
         });
       }
@@ -231,7 +233,7 @@ export default function ChatWidget({
 
     /* ---------- error ---------- */
     es.onerror(() => {
-       console.error('❌ [FRONTEND] SSE Error!');
+      console.error('❌ [FRONTEND] SSE Error!');
       es.close();
       setLoading(false);
       setMessages(m => [
@@ -288,7 +290,9 @@ export default function ChatWidget({
               if (m.type === 'text') {
                 return (
                   <div key={m.id} className={`message ${m.role}`}>
-                    {m.content}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {m.content}
+                    </ReactMarkdown>
                   </div>
                 );
               }
