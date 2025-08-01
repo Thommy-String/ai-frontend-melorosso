@@ -4,6 +4,16 @@ import { useAuth } from '../AuthContext';
 import './Dashboard.css';
 import ContactRequestsSection, { type ContactRequest } from '../ContactRequestSection';
 import ChatHistoryViewer from '../ChatHistoryViewer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Definizioni dei tipi per i messaggi (come abbiamo fatto prima)
+type ButtonMsg = { type: 'button'; label: string; action: string; class?: string };
+type MapCardData = { title: string; embedUrl: string; linkUrl: string };
+type MapCardMsg = { type: 'map_card'; data: MapCardData };
+
+// Aggiorna ParsedMsg per includerli
+type ParsedMsg = TextMsg | ProductCardMsg | ButtonMsg | MapCardMsg;
 
 // --- Interfacce e Costanti ---
 const API = 'https://ai-backend-melorosso.onrender.com';
@@ -137,7 +147,7 @@ export default function Dashboard() {
       await fetchInitialData(0);
       await fetchDataForPeriod();
     };
-    
+
     loadData();
   }, [slug, selectedPeriod, setToken]);
 
@@ -207,9 +217,9 @@ export default function Dashboard() {
               {performanceStatus && (<div className={`performance-badge ${performanceStatus.className}`}><BadgeIcon path={performanceStatus.iconPath} /><span>{performanceStatus.label}</span></div>)}
             </MetricCard>
           </div>
-          {contactRequests.length > 0 && 
-            <ContactRequestsSection 
-              requests={contactRequests} 
+          {contactRequests.length > 0 &&
+            <ContactRequestsSection
+              requests={contactRequests}
               onShowHistory={handleOpenContactChat}
               hasMore={hasMoreContacts}
               onLoadMore={handleLoadMoreContacts}
@@ -220,14 +230,144 @@ export default function Dashboard() {
             <InsightsSection preview={insightPreview} slug={slug!} />
           </div>
           <div className="chat-viewer-container">
+            {/* -- PANELLO SINISTRO: LISTA SESSIONI (invariato) -- */}
             <div className={`session-list-pane ${selectedSessionId ? 'mobile-hidden' : ''}`}>
-              <div className="session-list-header"><h2>Conversazioni Recenti</h2></div>
+              <div className="session-list-header">
+                <h2>Conversazioni Recenti</h2>
+              </div>
               <div className="session-list">
-                {sessionsList.length > 0 ? (sessionsList.map((s) => (<div key={s.session_id} className={`session-item ${selectedSessionId === s.session_id ? 'active' : ''}`} onClick={() => handleOpenChat(s.session_id)}><img src={s.avatarUrl} alt="avatar" className="session-avatar" /><div className="session-details"><div className="session-info"><span className="session-id">Sessione ...{s.session_id.slice(-6)}</span><span className="session-time">{new Date(s.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span></div><p className="session-preview">{s.preview || 'Nessun messaggio'}</p></div></div>))) : (<p className="empty-state-message">Nessuna sessione trovata.</p>)}
+                {sessionsList.length > 0 ? (
+                  sessionsList.map((s) => (
+                    <div
+                      key={s.session_id}
+                      className={`session-item ${selectedSessionId === s.session_id ? 'active' : ''}`}
+                      onClick={() => handleOpenChat(s.session_id)}
+                    >
+                      <img src={s.avatarUrl} alt="avatar" className="session-avatar" />
+                      <div className="session-details">
+                        <div className="session-info">
+                          <span className="session-id">Sessione ...{s.session_id.slice(-6)}</span>
+                          <span className="session-time">{new Date(s.updated_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
+                        </div>
+                        <p className="session-preview">{s.preview || 'Nessun messaggio'}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-state-message">Nessuna sessione trovata.</p>
+                )}
               </div>
             </div>
+
+            {/* -- PANELLO DESTRO: VISUALIZZATORE MESSAGGI (corretto) -- */}
             <div className={`message-pane ${selectedSessionId ? 'mobile-visible' : ''}`}>
-              {selectedSessionId ? (<><div className="message-pane-header"><button className="back-button" onClick={handleCloseChat}>←</button><h3>Dettaglio Chat</h3><span>ID: ...{selectedSessionId.slice(-6)}</span></div><div className="message-list">{isLoadingChat ? (<p className="empty-state-message">Caricamento...</p>) : (chatMessages.map((msg, i) => (<div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}><div className="message-bubble">{msg.content}</div></div>)))}</div></>) : (<div className="empty-state-message"><p>Seleziona una conversazione per visualizzarne i dettagli.</p></div>)}
+              {(() => {
+                // 1. Definiamo la funzione per renderizzare i contenuti complessi
+                // Sostituisci la tua vecchia funzione `renderMessageContent` con questa
+                const renderMessageContent = (msg: Message) => {
+                  // I messaggi dell'utente sono sempre testo semplice
+                  if (msg.role === 'user') {
+                    return <div className="message-bubble">{msg.content}</div>;
+                  }
+
+                  // Per i messaggi dell'assistente, proviamo a interpretarli come JSON
+                  try {
+                    const parsedContent: ParsedMsg[] = JSON.parse(msg.content);
+
+                    if (Array.isArray(parsedContent)) {
+                      return parsedContent.map((item, index) => {
+                        switch (item.type) {
+                          case 'text':
+                            return (
+                              <div key={index} className="message-bubble">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {item.content}
+                                </ReactMarkdown>
+                              </div>
+                            );
+                          case 'product_card':
+                            return (
+                              <a key={index} href={item.data.linkUrl} target="_blank" rel="noopener noreferrer" className="product-card-viewer">
+                                <img src={item.data.imageUrl} alt={item.data.title} className="product-card-image-viewer" />
+                                <div className="product-card-info-viewer">
+                                  <div className="product-card-title-viewer">{item.data.title}</div>
+                                  <div className="product-card-price-viewer">{item.data.price}</div>
+                                </div>
+                              </a>
+                            );
+
+                          // --- ✅ NUOVI CASE AGGIUNTI ---
+                          case 'button':
+                            return (
+                              <a key={index} href={item.action} className={`chat-button-viewer ${item.class || ''}`}>
+                                {item.label}
+                              </a>
+                            );
+                          case 'map_card':
+                            return (
+                              <div key={index} className="map-card-viewer">
+                                <iframe
+                                  src={item.data.embedUrl}
+                                  width="100%" height="180"
+                                  loading="lazy" style={{ border: 0 }}
+                                  allowFullScreen></iframe>
+                                <div className="map-card-footer-viewer">
+                                  <a href={item.data.linkUrl} target="_blank" rel="noopener noreferrer">
+                                    {item.data.title} - Apri su Google Maps
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          // --- ✅ FINE NUOVI CASE ---
+
+                          default:
+                            return null;
+                        }
+                      });
+                    }
+                  } catch (error) {
+                    // Fallback per vecchi messaggi o testo semplice
+                    return (
+                      <div className="message-bubble">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    );
+                  }
+                  return null;
+                };
+
+                // 2. Usiamo la funzione nella logica di rendering
+                if (!selectedSessionId) {
+                  return (
+                    <div className="empty-state-message">
+                      <p>Seleziona una conversazione per visualizzarne i dettagli.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    <div className="message-pane-header">
+                      <button className="back-button" onClick={handleCloseChat}>←</button>
+                      <h3>Dettaglio Chat</h3>
+                      <span>ID: ...{selectedSessionId.slice(-6)}</span>
+                    </div>
+                    <div className="message-list">
+                      {isLoadingChat ? (
+                        <p className="empty-state-message">Caricamento...</p>
+                      ) : (
+                        chatMessages.map((msg, i) => (
+                          <div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}>
+                            {renderMessageContent(msg)}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </main>

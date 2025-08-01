@@ -1,8 +1,21 @@
 // src/ChatHistoryViewer.tsx
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { type ContactRequest } from './ContactRequestSection';
-import './ChatHistoryViewer.css'; 
+import './ChatHistoryViewer.css';
+
+// 1. Definizioni dei tipi aggiornate
+type TextMsg = { type: 'text'; content: string };
+type ProductCardData = { title: string; price: string; imageUrl: string; linkUrl: string; };
+type ProductCardMsg = { type: 'product_card'; data: ProductCardData };
+type ButtonMsg = { type: 'button'; label: string; action: string; class?: string };
+type MapCardData = { title: string; embedUrl: string; linkUrl: string };
+type MapCardMsg = { type: 'map_card'; data: MapCardData };
+
+type ParsedMsg = TextMsg | ProductCardMsg | ButtonMsg | MapCardMsg;
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -19,6 +32,74 @@ interface ChatHistoryViewerProps {
 
 export default function ChatHistoryViewer({ isOpen, onClose, messages, isLoading, contactInfo }: ChatHistoryViewerProps) {
   if (!isOpen) return null;
+
+  // 2. Funzione di rendering aggiornata con i nuovi elementi
+  const renderMessageContent = (msg: Message) => {
+    if (msg.role === 'user') {
+      return <div className="message-bubble">{msg.content}</div>;
+    }
+
+    try {
+      const parsedContent: ParsedMsg[] = JSON.parse(msg.content);
+
+      if (Array.isArray(parsedContent)) {
+        return parsedContent.map((item, index) => {
+          switch (item.type) {
+            case 'text':
+              return (
+                <div key={index} className="message-bubble">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {item.content}
+                  </ReactMarkdown>
+                </div>
+              );
+            case 'product_card':
+              return (
+                <a key={index} href={item.data.linkUrl} target="_blank" rel="noopener noreferrer" className="product-card-viewer">
+                  <img src={item.data.imageUrl} alt={item.data.title} className="product-card-image-viewer" />
+                  <div className="product-card-info-viewer">
+                    <div className="product-card-title-viewer">{item.data.title}</div>
+                    <div className="product-card-price-viewer">{item.data.price}</div>
+                  </div>
+                </a>
+              );
+            case 'button':
+              return (
+                <a key={index} href={item.action} className={`chat-button-viewer ${item.class || ''}`}>
+                  {item.label}
+                </a>
+              );
+            case 'map_card':
+              return (
+                <div key={index} className="map-card-viewer">
+                  <iframe
+                    src={item.data.embedUrl}
+                    width="100%" height="180"
+                    loading="lazy" style={{ border: 0 }}
+                    allowFullScreen></iframe>
+                  <div className="map-card-footer-viewer">
+                    <a href={item.data.linkUrl} target="_blank" rel="noopener noreferrer">
+                      {item.data.title} - Apri su Google Maps
+                    </a>
+                  </div>
+                </div>
+              );
+            default:
+              return null;
+          }
+        });
+      }
+    } catch (error) {
+      return (
+        <div className="message-bubble">
+           <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {msg.content}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="chat-history-viewer">
@@ -47,7 +128,7 @@ export default function ChatHistoryViewer({ isOpen, onClose, messages, isLoading
         ) : (
           messages.map((msg, i) => (
             <div key={i} className={`message-bubble-wrapper message-from-${msg.role}`}>
-              <div className="message-bubble">{msg.content}</div>
+              {renderMessageContent(msg)}
             </div>
           ))
         )}
