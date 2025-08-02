@@ -23,6 +23,8 @@ interface Faq { question: string; count: number; }
 const LOREM_PICSUM_BASE_URL = 'https://picsum.photos/id/';
 const AVATAR_SIZE = 200;
 const MAX_PICSUM_ID = 1000;
+const CONTACTS_PAGE_SIZE = 5;
+
 
 // --- Funzioni Helper e Componenti UI ---
 function getChatPctColor(pct: number) { if (pct >= 90) return '#ef4444'; if (pct >= 80) return '#f59e0b'; return 'var(--c-accent)'; }
@@ -63,6 +65,41 @@ export default function Dashboard() {
   const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
   const [hasMoreContacts, setHasMoreContacts] = useState(true);
   const [contactsOffset, setContactsOffset] = useState(0);
+
+
+
+  const fetchContactRequests = React.useCallback(
+  async (offset = 0) => {
+    const token = localStorage.getItem('jwt');
+    if (!token || !slug) return;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const handleAuthError = (res: Response) => {
+      if (res.status === 401 || res.status === 403) { setToken(null); return true; }
+      return false;
+    };
+
+    try {
+      const url = `${API}/stats/contact-requests/${slug}` +
+                  `?offset=${offset}&limit=${CONTACTS_PAGE_SIZE}`;
+      const res  = await fetch(url, { headers });
+      if (handleAuthError(res)) return;
+      const { requests = [], total = 0 } = await res.json();
+
+      setContactRequests(prev => {
+        const updated = offset === 0 ? requests : [...prev, ...requests];
+        setHasMoreContacts(updated.length < total);
+        return updated;
+      });
+
+      setContactsOffset(offset + CONTACTS_PAGE_SIZE);
+    } catch (err) {
+      console.error('Errore contatti:', err);
+    }
+  },
+  [slug, setToken]
+);
+
 
   // ✅ CORREZIONE: Un solo blocco useEffect pulito
   useEffect(() => {
@@ -107,51 +144,19 @@ export default function Dashboard() {
       } catch (error) { console.error("Errore nel caricamento dei dati del periodo:", error); }
     };
 
-    const fetchInitialData = async (offset = 0) => {
-      try {
-        if (offset === 0) {
-          setContactRequests([]);
-          const [historyRes, sessionsRes, faqRes, insightsRes, contactsRes] = await Promise.all([
-            fetch(`${API}/stats/subscription/history/${slug}`, { headers }),
-            fetch(`${API}/stats/sessions/${slug}`, { headers }),
-            fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
-            fetch(`${API}/stats/insights/${slug}?days=30`, { headers }),
-            fetch(`${API}/stats/contact-requests/${slug}?offset=0`, { headers })
-          ]);
-          if ([historyRes, sessionsRes, faqRes, insightsRes, contactsRes].some(handleAuthError)) return;
-          const [historyData, sessionsData, faqData, insightsData, contactsData] = await Promise.all([historyRes.json(), sessionsRes.json(), faqRes.json(), insightsRes.json(), contactsRes.json()]);
-          setAvailablePeriods(historyData);
-          setFaqs(faqData.faqs ?? []);
-          setTips(faqData.tips ?? '');
-          setSessionsList((sessionsData as Session[]).map((s, idx) => ({ ...s, avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}` })));
-          const { summary = '', bullets = [], actions = [] } = insightsData;
-          let previewSrc = summary.trim() || bullets?.[0] || actions?.[0] || '';
-          const MAX_PREVIEW = 250;
-          const firstParagraph = previewSrc.split(/\n\n/)[0];
-          setInsightPreview(firstParagraph.length > MAX_PREVIEW ? firstParagraph.slice(0, MAX_PREVIEW) + '…' : firstParagraph);
-          setContactRequests(contactsData.requests || []);
-          setHasMoreContacts((contactsData.requests?.length || 0) < contactsData.total);
-          setContactsOffset(10);
-        } else {
-          const contactsRes = await fetch(`${API}/stats/contact-requests/${slug}?offset=${offset}`, { headers });
-          if (handleAuthError(contactsRes)) return;
-          const contactsData = await contactsRes.json();
-          setContactRequests(prev => [...prev, ...(contactsData.requests || [])]);
-          setHasMoreContacts((contactRequests.length + (contactsData.requests?.length || 0)) < contactsData.total);
-          setContactsOffset(prev => prev + 10);
-        }
-      } catch (error) { console.error("Errore nel caricamento dei dati iniziali:", error); }
-    };
+    // ------------------------------------------------------------
+// 1.  fetchContactRequests  (prima si chiamava fetchInitialData)
+// ------------------------------------------------------------
+
 
     const loadData = async () => {
-      await fetchInitialData(0);
-      await fetchDataForPeriod();
-    };
+      await fetchContactRequests(0);
+       await fetchDataForPeriod();
+     };
+     loadData();
+   }, [slug, selectedPeriod, setToken, fetchContactRequests]);
 
-    loadData();
-  }, [slug, selectedPeriod, setToken]);
-
-  const handleLoadMoreContacts = () => fetchInitialData(contactsOffset);
+  const handleLoadMoreContacts = () => fetchContactRequests(contactsOffset);
 
   const handleOpenContactChat = (request: ContactRequest) => {
     const token = localStorage.getItem('jwt');
