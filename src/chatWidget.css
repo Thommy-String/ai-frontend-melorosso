@@ -8,86 +8,7 @@ html {
   text-size-adjust: 100%
 }
 
-.chat-input {
-  flex: none;
-  display: flex;
-  align-items: center; /* Allinea verticalmente input e pulsante */
-  position: relative;  /* Necessario per posizionare il pulsante all'interno */
-  padding: 12px 16px;  /* Padding esterno per l'area di input */
-  background: var(--mlr-bg);
-  border-top: 1px solid #e5ecf5;
-}
 
-/* Il nuovo "campo di input" è in realtà un div che contiene
-  il vero input e il pulsante. Lo stilizziamo qui.
-*/
-.chat-input::before {
-  content: '';
-  position: absolute;
-  top: 12px;
-  left: 16px;
-  right: 16px;
-  bottom: 12px;
-  background-color: rgba(240, 244, 248, 0.7); /* Sfondo semi-trasparente */
-  border-radius: 24px; /* Bordi molto arrotondati */
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  pointer-events: none; /* Permette di cliccare attraverso */
-}
-
-chat-input input {
-  flex: 1;
-  width: 100%;
-  padding: 12px 50px 12px 24px; /* Padding: top/bottom, destra (spazio per il pulsante), sinistra */
-  font-size: 16px;
-  border: none;
-  background: transparent; /* L'input stesso è trasparente */
-  outline: none; /* Rimuove il bordo blu al focus */
-  position: relative; /* Per stare sopra lo pseudo-elemento ::before */
-  z-index: 1;
-  color: #1d232e;
-}
-
-.chat-input button {
-  position: absolute; /* Posiziona il pulsante dentro il contenitore */
-  right: 24px;      /* Distanza dal bordo destro */
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-
-  /* Stile del pulsante-icona */
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  border-radius: 50%; /* Cerchio perfetto */
-  background: var(--mlr-accent);
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .2s;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.chat-input button:hover {
-  background: var(--mlr-accent-dark);
-  transform: translateY(-50%) scale(1.05); /* Leggero zoom in hover */
-}
-
-.chat-input button:disabled {
-  opacity: .5;
-  cursor: default;
-  transform: translateY(-50%) scale(0.9); /* Leggero zoom out quando disabilitato */
-  pointer-events: none;
-}
-
-/* Stile per l'icona SVG dentro il pulsante */
-.chat-input button svg {
-  width: 22px;
-  height: 22px;
-  margin-left: 2px; /* Leggera correzione ottica */
-}
 
 @media (max-width:600px) {
   .chat-input input {
@@ -292,45 +213,84 @@ chat-input input {
 
 
 /* ------------------------------------------------------------------ */
-/*  4 · Footer / input                                                */
+/* 4 · Footer / input (Stile Fluttuante)                            */
 /* ------------------------------------------------------------------ */
+
 .chat-input {
-  flex: none;
+  flex-shrink: 0;
+  position: relative;
   display: flex;
-  gap: 12px;
-  padding: 14px 22px;
-  background: var(--mlr-bg);
-  border-top: 1px solid #e5ecf5
+  align-items: center;
+  /* ✅ Sfondo uguale all'area messaggi */
+  background: var(--mlr-chat-bg);
+  /* Rimuoviamo il bordo superiore per un look più pulito */
+  border-top: none;
+  padding: 14px 20px;
 }
 
 .chat-input input {
-  flex: 1;
-  padding: 10px 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  flex-grow: 1;
+  width: 100%;
+  padding: 14px 60px 14px 24px;
+  font-family: inherit;
   font-size: 16px;
-  border: 1px solid #c9d6e4;
-  border-radius: 10px;
-  background: transparent
+  line-height: 1.4;
+  color: #1d232e;
+  
+  /* ✅ Sfondo bianco, bordi smussati e ombra */
+  background-color: #ffffff; /* Sfondo bianco */
+  border: 1px solid #e5ecf5;
+  border-radius: 14px; /* Raggio uguale alle bolle dei messaggi */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07); /* Ombra per l'effetto fluttuante */
+  
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chat-input input:focus {
+  border-color: var(--mlr-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07), inset 0 0 0 2px var(--c-accent-soft);
 }
 
 .chat-input button {
-  padding: 0 24px;
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border: none;
-  border-radius: 10px;
+  border-radius: 50%;
   background: var(--mlr-accent);
   color: #fff;
-  font-size: 15px;
   cursor: pointer;
-  transition: background .2s
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
 }
 
 .chat-input button:hover {
-  background: var(--mlr-accent-dark)
+  background: var(--mlr-accent-dark);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .chat-input button:disabled {
-  opacity: .5;
-  cursor: default
+  opacity: 0.5;
+  cursor: default;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
+
+.chat-input button svg {
+  width: 22px;
+  height: 22px;
+  margin-left: 2px;
+}
+
 
 /* ------------------------------------------------------------------ */
 /*  5 · Bubble flottante                                              */
@@ -478,7 +438,7 @@ chat-input input {
   }
 
   .chat-input {
-    padding: 16px 26px;
+    padding: 16px 18px;
     gap: 14px
   }
 }
