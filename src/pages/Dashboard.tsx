@@ -69,36 +69,84 @@ export default function Dashboard() {
 
 
   const fetchContactRequests = React.useCallback(
-  async (offset = 0) => {
+    async (offset = 0) => {
+      const token = localStorage.getItem('jwt');
+      if (!token || !slug) return;
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const handleAuthError = (res: Response) => {
+        if (res.status === 401 || res.status === 403) { setToken(null); return true; }
+        return false;
+      };
+
+      try {
+        const url = `${API}/stats/contact-requests/${slug}` +
+          `?offset=${offset}&limit=${CONTACTS_PAGE_SIZE}`;
+        const res = await fetch(url, { headers });
+        if (handleAuthError(res)) return;
+        const { requests = [], total = 0 } = await res.json();
+
+        setContactRequests(prev => {
+          const updated = offset === 0 ? requests : [...prev, ...requests];
+          setHasMoreContacts(updated.length < total);
+          return updated;
+        });
+
+        setContactsOffset(offset + CONTACTS_PAGE_SIZE);
+      } catch (err) {
+        console.error('Errore contatti:', err);
+      }
+    },
+    [slug, setToken]
+  );
+
+  // subito dopo fetchContactRequests
+  const fetchDashboardBits = React.useCallback(async () => {
     const token = localStorage.getItem('jwt');
     if (!token || !slug) return;
     const headers = { Authorization: `Bearer ${token}` };
-
     const handleAuthError = (res: Response) => {
       if (res.status === 401 || res.status === 403) { setToken(null); return true; }
       return false;
     };
 
     try {
-      const url = `${API}/stats/contact-requests/${slug}` +
-                  `?offset=${offset}&limit=${CONTACTS_PAGE_SIZE}`;
-      const res  = await fetch(url, { headers });
-      if (handleAuthError(res)) return;
-      const { requests = [], total = 0 } = await res.json();
+      const [sessionsRes, faqRes, insightsRes, histRes] = await Promise.all([
+        fetch(`${API}/stats/sessions/${slug}`, { headers }),
+        fetch(`${API}/stats/faq/${slug}?days=30`, { headers }),
+        fetch(`${API}/stats/insights/${slug}?days=30`, { headers }),
+        fetch(`${API}/stats/subscription/history/${slug}`, { headers })
+      ]);
+      if ([sessionsRes, faqRes, insightsRes, histRes].some(handleAuthError)) return;
 
-      setContactRequests(prev => {
-        const updated = offset === 0 ? requests : [...prev, ...requests];
-        setHasMoreContacts(updated.length < total);
-        return updated;
-      });
+      const [sessionsData, faqData, insightsData, historyData] =
+        await Promise.all([sessionsRes.json(), faqRes.json(), insightsRes.json(), histRes.json()]);
 
-      setContactsOffset(offset + CONTACTS_PAGE_SIZE);
+      /* sessions list + avatar */
+      setSessionsList(
+        (sessionsData as Session[]).map((s, idx) => ({
+          ...s,
+          avatarUrl: `${LOREM_PICSUM_BASE_URL}${(idx % (MAX_PICSUM_ID - 50)) + 50}/${AVATAR_SIZE}`
+        }))
+      );
+
+      /* period selector */
+      setAvailablePeriods(historyData);
+
+      /* FAQ + tips */
+      setFaqs(faqData.faqs ?? []);
+      setTips(faqData.tips ?? '');
+
+      /* insight preview */
+      const { summary = '', bullets = [], actions = [] } = insightsData;
+      const MAX = 250;
+      const src = (summary.trim() || bullets[0] || actions[0] || '').split(/\n\n/)[0];
+      setInsightPreview(src.length > MAX ? src.slice(0, MAX) + '…' : src);
+
     } catch (err) {
-      console.error('Errore contatti:', err);
+      console.error('Errore dashboard bits:', err);
     }
-  },
-  [slug, setToken]
-);
+  }, [slug, setToken]);
 
 
   // ✅ CORREZIONE: Un solo blocco useEffect pulito
@@ -145,16 +193,19 @@ export default function Dashboard() {
     };
 
     // ------------------------------------------------------------
-// 1.  fetchContactRequests  (prima si chiamava fetchInitialData)
-// ------------------------------------------------------------
+    // 1.  fetchContactRequests  (prima si chiamava fetchInitialData)
+    // ------------------------------------------------------------
 
 
     const loadData = async () => {
-      await fetchContactRequests(0);
-       await fetchDataForPeriod();
-     };
-     loadData();
-   }, [slug, selectedPeriod, setToken, fetchContactRequests]);
+      await Promise.all([
+        fetchContactRequests(0),
+        fetchDashboardBits(),
+        fetchDataForPeriod()
+      ]);
+    };
+    loadData();
+  }, [slug, selectedPeriod, setToken, fetchContactRequests, fetchDashboardBits]);
 
   const handleLoadMoreContacts = () => fetchContactRequests(contactsOffset);
 
