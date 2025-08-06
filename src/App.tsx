@@ -1,43 +1,45 @@
 // App.tsx ------------------------------------------------------------
 import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import Login      from './pages/Login';
-import Dashboard  from './pages/Dashboard';
-import Insights   from './pages/Insights';
+import Login from './pages/Login';
+import PartnerLogin from './pages/PartnerLogin';
+import Dashboard from './pages/Dashboard';
+import PartnerDashboard from './pages/PartnerDashboard';
+import Insights from './pages/Insights';
 import ChatWidget from './ChatWidget';
 import { useAuth } from './AuthContext';
 
-
-/* ---------- tema per singolo client ------------------------------ */
+/* ---------- tema per singolo client (invariato) ------------------- */
 const brand = (slug: string) => ({
   barilla: {
-    accent : '#0057B7',
+    accent: '#0057B7',
     logoUrl: 'https://www.barilla.com/favicon.ico',
-    start  : 'Chiedimi tutto su Barilla…'
+    start: 'Chiedimi tutto su Barilla…'
   },
   'custom-light-garage': {
-    accent : '#FF4E00',
+    accent: '#FF4E00',
     logoUrl: '/clg_logo.svg',
-    start  : 'Cosa vuoi illuminare oggi?'
+    start: 'Cosa vuoi illuminare oggi?'
   }
 }[slug] ?? {
-  accent : '#3b82f6',
+  accent: '#3b82f6',
   logoUrl: '/bot.png',
-  start  : 'Scrivi…'
+  start: 'Scrivi…'
 });
 
-/* ---------- helper: slug dal JWT --------------------------------- */
-function getSlugFromToken(tok?: string | null): string | null {
-  if (!tok) return null;
+/* ✅ helper aggiornato per analizzare il token di clienti E partner --- */
+function parseTokenPayload(token?: string | null): { slug?: string; partner_id?: string; admin?: boolean } | null {
+  if (!token) return null;
   try {
-    const [, p]   = tok.split('.');
-    const padded  = p.padEnd(p.length + (4 - p.length % 4) % 4, '=');
-    return JSON.parse(atob(padded)).slug ?? null;
+    const [, p] = token.split('.');
+    const base64 = p.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(base64);
+    return JSON.parse(decoded);
   } catch {
     return null;
   }
 }
 
-/* ---------- wrapper /chat/:slug ---------------------------------- */
+/* ---------- wrapper /chat/:slug (invariato) ----------------------- */
 function ChatRoute() {
   const { slug = 'barilla' } = useParams();
   const { accent, logoUrl, start } = brand(slug);
@@ -54,39 +56,62 @@ function ChatRoute() {
 
 /* =========================== APP ================================= */
 export default function App() {
-  const { token } = useAuth(); // Usa l'hook per avere il token reattivo!
-  const slug = getSlugFromToken(token);
+  const { token } = useAuth();
+  const payload = parseTokenPayload(token);
 
   return (
     <Router>
       <Routes>
-        {/* Se c'è un token, non mostrare la pagina di login, vai alla dashboard */}
-        <Route 
-          path="/login" 
-          element={!token ? <Login /> : <Navigate to={`/dashboard/${slug}`} replace />} 
+        {/* --- ROTTE DI LOGIN --- */}
+        <Route
+          path="/login"
+          element={!token ? <Login /> : <Navigate to={`/dashboard/${payload?.slug}`} replace />}
         />
-        
-        {/* Le tue route protette ora funzionano correttamente */}
+        {/* ✅ Nuova rotta per il login dei partner */}
+        <Route
+          path="/partner/login"
+          element={!token ? <PartnerLogin /> : <Navigate to="/partner/dashboard" replace />}
+        />
+
+        {/* --- ROTTE PROTETTE PER CLIENTI --- */}
         <Route
           path="/dashboard/:slug"
-          element={token ? <Dashboard /> : <Navigate to="/login" replace />}
+          element={token && payload?.slug ? <Dashboard /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/insights/:slug"
-          element={token ? <Insights /> : <Navigate to="/login" replace />}
+          element={token && payload?.slug ? <Insights /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/chat/:slug"
-          element={token ? <ChatRoute /> : <Navigate to="/login" replace />}
+          element={token && payload?.slug ? <ChatRoute /> : <Navigate to="/login" replace />}
         />
 
-        {/* Fallback */}
+        {/* ✅ Nuova rotta protetta per la dashboard dei partner */}
+        <Route
+          path="/partner/dashboard"
+          element={token && payload?.partner_id ? <PartnerDashboard /> : <Navigate to="/partner/login" replace />}
+        />
+
+        {/* --- ROTTA DI DEFAULT / FALLBACK --- */}
         <Route
           path="*"
           element={
-            token && slug
-              ? <Navigate to={`/dashboard/${slug}`} replace />
-              : <Navigate to="/login" replace />
+            (() => {
+              if (!token || !payload) {
+                return <Navigate to="/login" replace />;
+              }
+              // Se l'utente è un cliente/admin, vai alla sua dashboard
+              if (payload.slug) {
+                return <Navigate to={`/dashboard/${payload.slug}`} replace />;
+              }
+              // Se l'utente è un partner, vai alla sua dashboard
+              if (payload.partner_id) {
+                return <Navigate to="/partner/dashboard" replace />;
+              }
+              // Altrimenti, torna al login come sicurezza
+              return <Navigate to="/login" replace />;
+            })()
           }
         />
       </Routes>
