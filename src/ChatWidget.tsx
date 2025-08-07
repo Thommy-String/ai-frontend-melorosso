@@ -153,15 +153,20 @@ export default function ChatWidget({
   /* -------------------------------------------------- */
   /*  Invio messaggio                                   */
   /* -------------------------------------------------- */
-  const doSend = () => {
+ const doSend = () => {
     const text = input.trim();
     if (!text) return;
 
-    /* 1️⃣ echo locale del messaggio utente */
-    setMessages(m => [
-      ...m,
-      { id: crypto.randomUUID(), role: 'user', type: 'text', content: text }
-    ]);
+    // ✅ 1. Crea l'oggetto del messaggio utente QUI, all'inizio
+    const userMessage: TextMsg = { 
+      id: crypto.randomUUID(), 
+      role: 'user', 
+      type: 'text', 
+      content: text 
+    };
+
+    // 2. Aggiungilo subito allo stato per l'echo locale
+    setMessages(m => [...m, userMessage]);
     setInput('');
     setLoading(true);
     streamEndedRef.current = false;
@@ -171,20 +176,24 @@ export default function ChatWidget({
       message: text,
       session_id: sessionId,
       pageContent: pageRef.current ?? undefined,
-      stream: true
     };
-    console.log('➡️ [FRONTEND] Invio messaggio con payload:', payload)
     pageRef.current = null;
-
+    
     console.log('➡️ [FRONTEND] Sending payload:', payload);
 
     const es = sendMessageStream(payload);
-    // ► ricevi un eventuale nuovo session_id dal backend
+
     es.onsid(newSid => {
-      console.log(`[FRONTEND] 🔔 EVENTO 'sid' RICEVUTO! Vecchio SID: ${sessionId}, Nuovo SID: ${newSid}`);
-      setSessionId(newSid); // Aggiorna lo stato di React
-      localStorage.setItem(`session_id_${slug}`, newSid); // Salva nel localStorage per le sessioni future
-    })
+        if (newSid && newSid !== sessionId) {
+            console.log("[FRONTEND] Sessione scaduta. Pulisco la chat ma mantengo l'ultimo messaggio.");
+            
+            // ✅ 3. Ora la variabile 'userMessage' è accessibile qui
+            setMessages([userMessage]); 
+
+            setSessionId(newSid);
+            localStorage.setItem(`session_id_${slug}`, newSid);
+        }
+    });
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {

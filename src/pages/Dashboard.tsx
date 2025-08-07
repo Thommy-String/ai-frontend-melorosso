@@ -29,6 +29,9 @@ type MapCardMsg = { type: 'map_card'; data: MapCardData };
 // (assumes TextMsg | ProductCardMsg already defined elsewhere)
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 export type ParsedMsg = TextMsg | ProductCardMsg | ButtonMsg | MapCardMsg;
+type TextMsg = { type: 'text'; content: string };
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+type ProductCardMsg = { type: 'product_card'; data: any };
 
 /* ------------------------------------------------------------------
  *  CONSTANTS & HELPERS
@@ -171,6 +174,94 @@ const InsightsSection: React.FC<{ preview: string; slug: string }> = ({ preview,
       </Link>
     </div>
   ) : null;
+
+
+  function renderMessageContent(msg: Message) {
+    if (msg.role === 'user') {
+      return <div className="message-bubble">{msg.content}</div>;
+    }
+
+    try {
+      const parsedContent = JSON.parse(msg.content) as ParsedMsg[];
+
+      if (Array.isArray(parsedContent)) {
+        return parsedContent.map((item, index) => {
+          switch (item.type) {
+            case 'text':
+              return (
+                <div key={index} className="message-bubble">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
+                </div>
+              );
+            case 'product_card':
+              return (
+                <a
+                  key={index}
+                  href={item.data.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="product-card-viewer"
+                >
+                  <img
+                    src={item.data.imageUrl}
+                    alt={item.data.title}
+                    className="product-card-image-viewer"
+                  />
+                  <div className="product-card-info-viewer">
+                    <div className="product-card-title-viewer">{item.data.title}</div>
+                    <div className="product-card-price-viewer">{item.data.price}</div>
+                  </div>
+                </a>
+              );
+            case 'button':
+              return (
+                <a
+                  key={index}
+                  href={item.action}
+                  className={`chat-button-viewer ${item.class || ''}`}
+                >
+                  {item.label}
+                </a>
+              );
+            case 'map_card':
+              return (
+                <div key={index} className="map-card-viewer">
+                  <iframe
+                    src={item.data.embedUrl}
+                    width="100%"
+                    height="180"
+                    loading="lazy"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                  />
+                  <div className="map-card-footer-viewer">
+                    <a
+                      href={item.data.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {item.data.title} - Apri su Google Maps
+                    </a>
+                  </div>
+                </div>
+              );
+            default:
+              return null;
+          }
+        });
+      }
+    } catch (error) {
+      // Fallback: plain markdown
+      return (
+        <div className="message-bubble">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
 
 /* ------------------------------------------------------------------
  *  COMPONENT
@@ -326,7 +417,6 @@ export default function Dashboard() {
 
   const handleLoadMoreContacts = async () => {
     if (!slug || !token) return;
-
     try {
       const data = await getContactRequests(slug, contactsOffset, token);
       setContactRequests((prev) => [...prev, ...data.requests]);
@@ -338,42 +428,34 @@ export default function Dashboard() {
   };
 
   const handleOpenContactChat = (request: ContactRequest) => {
-    const jwt = localStorage.getItem('jwt');
-    if (!jwt) return;
-
+    if (!token) return;
     setSelectedContact(request);
     setIsLoadingHistory(true);
     setHistoryMessages([]);
-
-    fetch(`${API}/chat/${request.session_id}`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-    })
-      .then((res) => res.json())
+    // Use the correct, token-aware function
+    getChatHistory(request.session_id, token)
       .then((data) => {
         setHistoryMessages(data.chatLogs || []);
       })
-      .catch((err) => console.error('Errore nel caricamento della cronologia chat:', err))
+      .catch((err) => console.error('Errore cronologia chat:', err))
       .finally(() => setIsLoadingHistory(false));
-  };
-
-  const handleCloseViewer = () => setSelectedContact(null);
+  }
 
   const handleOpenChat = (sessionId: string) => {
-    const jwt = localStorage.getItem('jwt');
-    if (!jwt) return;
-
+    if (!token) return;
     setSelectedSessionId(sessionId);
     setIsLoadingChat(true);
     setChatMessages([]);
-
-    fetch(`${API}/chat/${sessionId}`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-    })
-      .then((r) => r.json())
-      .then((data) => setChatMessages(data.chatLogs || []))
+    // Use the correct, token-aware function
+    getChatHistory(sessionId, token)
+      .then((data: { chatLogs?: Message[] }) => {
+        setChatMessages(data.chatLogs || []);
+      })
       .catch(console.error)
       .finally(() => setIsLoadingChat(false));
   };
+
+  const handleCloseViewer = () => setSelectedContact(null);
 
   const handleCloseChat = () => setSelectedSessionId(null);
 
@@ -618,93 +700,5 @@ export default function Dashboard() {
     </>
   );
 
-  /* ------------------------------------------------------------------
-   *  INTERNAL: MESSAGE RENDERER
-   * ------------------------------------------------------------------ */
-
-  function renderMessageContent(msg: Message) {
-    if (msg.role === 'user') {
-      return <div className="message-bubble">{msg.content}</div>;
-    }
-
-    try {
-      const parsedContent = JSON.parse(msg.content) as ParsedMsg[];
-
-      if (Array.isArray(parsedContent)) {
-        return parsedContent.map((item, index) => {
-          switch (item.type) {
-            case 'text':
-              return (
-                <div key={index} className="message-bubble">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.content}</ReactMarkdown>
-                </div>
-              );
-            case 'product_card':
-              return (
-                <a
-                  key={index}
-                  href={item.data.linkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="product-card-viewer"
-                >
-                  <img
-                    src={item.data.imageUrl}
-                    alt={item.data.title}
-                    className="product-card-image-viewer"
-                  />
-                  <div className="product-card-info-viewer">
-                    <div className="product-card-title-viewer">{item.data.title}</div>
-                    <div className="product-card-price-viewer">{item.data.price}</div>
-                  </div>
-                </a>
-              );
-            case 'button':
-              return (
-                <a
-                  key={index}
-                  href={item.action}
-                  className={`chat-button-viewer ${item.class || ''}`}
-                >
-                  {item.label}
-                </a>
-              );
-            case 'map_card':
-              return (
-                <div key={index} className="map-card-viewer">
-                  <iframe
-                    src={item.data.embedUrl}
-                    width="100%"
-                    height="180"
-                    loading="lazy"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                  />
-                  <div className="map-card-footer-viewer">
-                    <a
-                      href={item.data.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {item.data.title} - Apri su Google Maps
-                    </a>
-                  </div>
-                </div>
-              );
-            default:
-              return null;
-          }
-        });
-      }
-    } catch (error) {
-      // Fallback: plain markdown
-      return (
-        <div className="message-bubble">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-        </div>
-      );
-    }
-
-    return null;
-  }
+  
 }

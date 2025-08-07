@@ -132,15 +132,9 @@ export function sendMessageStream(opts: SendOpts) {
   return es;
 }
 
-export async function getHistory(sessionId: string) {
-  const r = await fetch(url(`/chat/${sessionId}`));
-  if (!r.ok) {
-    if (r.status === 404) {
-      return [];
-    }
-    throw new Error('Failed to fetch history');
-  }
-  return (await r.json()).chatLogs as { role: 'user' | 'assistant'; content: string }[];
+export function getHistory(sessionId: string, token: string | null) {
+  // Ora usa il nostro helper che aggiunge automaticamente il token
+  return fetchWithAuth(`/chat/${sessionId}`, token);
 }
 
 
