@@ -82,12 +82,12 @@ export default function AdminDashboard() {
   return (
     <div className="admin-container">
       <header className="admin-header">
-        <h1>Pannello di Controllo Admin</h1>
+        <h1>Pannello di Controllo Amministrazione</h1>
       </header>
 
       <div className="metrics-grid-admin">
         {/* ✅ CORREZIONE: Usiamo String() per garantire che il valore sia sempre una stringa valida */}
-        <MetricCard title="Clienti Attivi Totali" value={String(metrics?.totalClients ?? 'N/D')} />
+        <MetricCard title="Clienti Totali" value={String(metrics?.totalClients ?? 'N/D')} />
 
         {/* ✅ CORREZIONE: Gestiamo il caso in cui mrr possa non essere un numero valido */}
         <MetricCard

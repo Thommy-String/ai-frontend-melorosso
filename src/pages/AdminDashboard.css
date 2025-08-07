@@ -62,10 +62,16 @@
   font-size: 0.9rem;
 }
 
+.btn-edit-client {
+    margin: 0px 10px;
+    border-style: none;
+    background-color: transparent;
+}
+
 .admin-table th, .admin-table td {
   border-bottom: 1px solid #eee;
   padding: 0.75rem;
-  text-align: left;
+  text-align: left;;
 }
 
 .admin-table th {
@@ -186,4 +192,68 @@
 }
 .modal-actions {
   display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;
+}
+
+
+
+/* --- ✅ STILI RESPONSIVI PER MOBILE (Versione Aggiornata) --- */
+
+@media (max-width: 768px) {
+
+  /* ... (le regole per .admin-container, .metrics-grid-admin, .alerts-grid rimangono invariate) ... */
+
+  /* --- Logica per le tabelle --- */
+  .admin-table thead {
+    display: none; /* Nascondi le intestazioni su mobile */
+  }
+
+  .admin-table tr {
+    display: block;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  
+  .admin-table td {
+    display: flex; /* Usiamo flexbox per un allineamento migliore */
+    justify-content: space-between; /* Allinea etichetta e valore ai lati opposti */
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #333;
+    text-align: left; /* Assicura che l'etichetta sia a sinistra */
+    padding-right: 1rem;
+  }
+  
+  /* Stili specifici per celle complesse */
+  .admin-table td[data-label="Cliente"] {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  .admin-table td[data-label="Cliente"] a {
+    flex-grow: 1; /* Fa in modo che il link occupi lo spazio disponibile */
+    text-align: left;
+  }
+
+  .admin-table td[data-label="Partner"] select {
+    width: auto;
+    max-width: 150px; /* Limita la larghezza del select */
+  }
+
+  .consumption-cell {
+    align-items: flex-end; /* Allinea il contenuto della cella a destra */
+  }
 }

@@ -25,6 +25,24 @@ export interface SendOpts {
   stream?: boolean;
 }
 
+export interface NewClient {
+  name: string;
+  partner_id: string | null;
+  plan_id: string;
+  contact_email: string;
+  billing_email: string;
+  phone?: string;
+}
+
+export type ClientPatch = Partial<{
+  name: string;
+  partner_id: string | null;
+  plan_id: string;
+  contact_email: string;
+  billing_email: string;
+  phone?: string;
+}>;
+
 /* ------------------------------------------------------------------ */
 /* API per Chat (Funzioni Originali Mantenute Intatte)               */
 /* ------------------------------------------------------------------ */
@@ -39,10 +57,14 @@ export function sendMessageStream(opts: SendOpts) {
   let onData: DataCB = () => { };
   let onError: ErrorCB = () => { };
 
+  let onSid: (sid: string) => void = () => { };
+
+  // facciamo in modo che chi usa la funzione possa registrarsi
   const es = {
-    onmessage(cb: DataCB) { onData = cb; },
-    onerror(cb: ErrorCB) { onError = cb; },
-    close() { ctrl.abort(); }
+    onmessage(cb: DataCB) { onData = cb },
+    onsid(cb: (sid: string) => void) { onSid = cb },   // 👈 nuovo
+    onerror(cb: ErrorCB) { onError = cb },
+    close() { ctrl.abort() }
   } as const;
 
   fetch(url('/chat'), {
@@ -62,17 +84,43 @@ export function sendMessageStream(opts: SendOpts) {
 
       const pump = (): void => {
         rd.read().then(({ done, value }) => {
-          if (done) { onData('[END]'); return; }
+          if (done) {
+            onData('[END]');
+            return;
+          }
 
           buf += dec.decode(value, { stream: true });
 
-          let idx: number;
-          while ((idx = buf.indexOf('\n\n')) > -1) {
-            const raw = buf.slice(0, idx).trimEnd();
-            buf = buf.slice(idx + 2);
-            if (raw.startsWith('data:')) onData(raw.slice(5));
+          let endOfMessageIdx;
+          // Processa ogni "blocco" di messaggio completo (terminato da \n\n)
+          while ((endOfMessageIdx = buf.indexOf('\n\n')) > -1) {
+            const messageBlock = buf.slice(0, endOfMessageIdx);
+            buf = buf.slice(endOfMessageIdx + 2); // Sposta il buffer in avanti
+
+            let eventName = 'message';
+            let dataPayload = '';
+
+            // Analizza ogni riga all'interno del blocco
+            const lines = messageBlock.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataPayload += line.slice(5).trim();
+              }
+            }
+
+            // Se abbiamo trovato dei dati, inviamoli al gestore corretto
+            if (dataPayload) {
+              console.log(`[API PUMP] Rilevato evento '${eventName}' con dati:`, dataPayload);
+              if (eventName === 'sid') {
+                onSid(dataPayload);    // 🔔 Chiama il callback del nuovo SID
+              } else {
+                onData(dataPayload);   // ✍️ Chiama il callback dei dati normale
+              }
+            }
           }
-          pump();
+          pump(); // Continua a leggere dallo stream
         })
           .catch(err => {
             if (err?.name !== 'AbortError' && !ctrl.signal.aborted) onError();
@@ -80,9 +128,6 @@ export function sendMessageStream(opts: SendOpts) {
       };
       pump();
     })
-    .catch(err => {
-      if (err?.name !== 'AbortError' && !ctrl.signal.aborted) onError();
-    });
 
   return es;
 }
@@ -202,9 +247,16 @@ export function impersonateClient(slug: string, token: string | null) {
   });
 }
 
-export function createClient(data: any, token: string | null) {
+export function createClient(data: NewClient, token: string | null) {
   return fetchWithAuth('/admin/clients', token, {
     method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateClient(slug: string, data: Partial<ClientPatch>, token: string | null) {
+  return fetchWithAuth(`/admin/clients/${slug}`, token, {
+    method: 'PUT',
     body: JSON.stringify(data),
   });
 }

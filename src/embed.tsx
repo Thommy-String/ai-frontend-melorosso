@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------ */
 import ReactDOM from 'react-dom/client';
 import ChatWidget, { type ChatWidgetProps } from './ChatWidget';
-import { setApiBase } from './api/api';
+
 
 /* ------------------------------------------------------------------
  *  1 · Tipi  
@@ -57,7 +57,7 @@ function applyCSSVars(o: EmbedOpts) {
 /* ------------------------------------------------------------------
  *  4 · Mount reale del widget                                       */
 function mount(opts: EmbedOpts) {
-  if (opts.api) setApiBase(opts.api);
+  
   applyCSSVars(opts);
   const host = document.createElement('div');
   document.body.appendChild(host);

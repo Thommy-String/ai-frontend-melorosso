@@ -2,13 +2,27 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import ClientModal from './ClientModal';
-import { getAllClients, getPartners, assignPartnerToClient, impersonateClient, createClient, getPlans } from '../api/api'; import { differenceInDays, format } from 'date-fns';
+import {
+    getAllClients,
+    getPartners,
+    assignPartnerToClient,
+    impersonateClient,
+    createClient,
+    updateClient,
+    getPlans,
+} from '../api/api';
+import { differenceInDays, format } from 'date-fns';
 
+/* ------------------------------------------------------------------ */
+/* TYPES                                                              */
+/* ------------------------------------------------------------------ */
 
-// --- TIPI E INTERFACCE ---
 interface Client {
     slug: string;
     name: string;
+    contact_email: string | null;
+    billing_email: string | null;
+    plan_id: string | null;
     plan_name: string | null;
     partner_id: string | null;
     partner_name: string | null;
@@ -16,15 +30,13 @@ interface Client {
     monthly_quota: number;
     renew_date: string;
 }
-interface Partner {
-    id: string;
-    name: string;
-}
+interface Partner { id: string; name: string }
 
 interface NewClientFormData {
     name: string;
     contact_email: string;
-    password?: string; // Opzionale se gestito diversamente
+    billing_email: string;
+    password?: string;
     plan_id: string;
     partner_id: string;
 }
@@ -32,203 +44,221 @@ interface NewClientFormData {
 type SortKey = 'name' | 'plan_name' | 'consumption' | 'renew_date' | 'partner_name';
 type SortDirection = 'asc' | 'desc';
 
-// --- COMPONENTE HELPER ---
-const ProgressBar = ({ value, max }: { value: number, max: number }) => {
-    const percentage = max > 0 ? (value / max) * 100 : 0;
-    let colorClass = 'progress-bar-normal';
-    if (percentage > 85) colorClass = 'progress-bar-danger';
-    else if (percentage > 65) colorClass = 'progress-bar-warning';
+/* ------------------------------------------------------------------ */
+/* HELPERS                                                            */
+/* ------------------------------------------------------------------ */
+
+const ProgressBar = ({ value, max }: { value: number; max: number }) => {
+    const pct = max > 0 ? (value / max) * 100 : 0;
+    const cls =
+        pct > 85 ? 'danger' : pct > 65 ? 'warning' : 'normal';
     return (
         <div className="progress-bar-container">
-            <div className={`progress-bar ${colorClass}`} style={{ width: `${percentage}%` }}></div>
+            <div className={`progress-bar progress-bar-${cls}`} style={{ width: `${pct}%` }} />
         </div>
     );
 };
 
-// ===================================================================
-// COMPONENTE PRINCIPALE
-// ===================================================================
+/** rimuove chiavi con stringa vuota / undefined */
+const clean = (obj: Record<string, any>) =>
+    Object.fromEntries(
+        Object.entries(obj).filter(([_, v]) => v !== '' && v !== undefined),
+    );
+
+/* ------------------------------------------------------------------ */
+/* COMPONENT                                                          */
+/* ------------------------------------------------------------------ */
+
 export default function ClientManager() {
     const { token } = useAuth();
+
     const [clients, setClients] = useState<Client[]>([]);
     const [partners, setPartners] = useState<Partner[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'name', direction: 'asc' });
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>({
+        key: 'name',
+        direction: 'asc',
+    });
+
+    const [modal, setModal] = useState<
+        | null
+        | { mode: 'create' }
+        | { mode: 'edit'; data: Client }
+    >(null);
+
+    /* ------------ LOAD DATA ------------ */
     const loadData = useCallback(async () => {
         if (!token) return;
         try {
             setLoading(true);
-            const [clientsData, partnersData, plansData] = await Promise.all([
+            const [c, p, pl] = await Promise.all([
                 getAllClients(token),
                 getPartners(token),
-                getPlans(token)
+                getPlans(token),
             ]);
-            setClients(clientsData.clients);
-            setPartners(partnersData);
-            setPlans(plansData);
-        } catch (error) {
-            console.error("Errore caricamento dati:", error);
+            setClients(c.clients);
+            setPartners(p);
+            setPlans(pl);
+        } catch (err) {
+            console.error('Errore caricamento dati:', err);
         } finally {
             setLoading(false);
         }
     }, [token]);
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    useEffect(() => { loadData(); }, [loadData]);
 
+    /* ------------ SORT ------------ */
     const sortedClients = useMemo(() => {
-        let sortableClients = [...clients];
-        if (sortConfig !== null) {
-            sortableClients.sort((a, b) => {
-                let aValue: any;
-                let bValue: any;
-
-                if (sortConfig.key === 'consumption') {
-                    aValue = a.monthly_quota > 0 ? a.chats_used / a.monthly_quota : 0;
-                    bValue = b.monthly_quota > 0 ? b.chats_used / b.monthly_quota : 0;
-                } else {
-                    aValue = a[sortConfig.key] || '';
-                    bValue = b[sortConfig.key] || '';
-                }
-
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-        return sortableClients;
+        if (!sortConfig) return clients;
+        return [...clients].sort((a, b) => {
+            const { key, direction } = sortConfig;
+            const dir = direction === 'asc' ? 1 : -1;
+            const aVal =
+                key === 'consumption'
+                    ? (a.chats_used / (a.monthly_quota || 1))
+                    : (a as any)[key] || '';
+            const bVal =
+                key === 'consumption'
+                    ? (b.chats_used / (b.monthly_quota || 1))
+                    : (b as any)[key] || '';
+            if (aVal < bVal) return -1 * dir;
+            if (aVal > bVal) return 1 * dir;
+            return 0;
+        });
     }, [clients, sortConfig]);
 
-    const requestSort = (key: SortKey) => {
-        let direction: SortDirection = 'asc';
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-            direction = 'desc';
-        }
-        setSortConfig({ key, direction });
+    const toggleSort = (key: SortKey) => {
+        setSortConfig((prev) =>
+            prev && prev.key === key
+                ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+                : { key, direction: 'asc' },
+        );
     };
 
-    const getSortArrow = (key: SortKey) => {
-        if (!sortConfig || sortConfig.key !== key) return null;
-        return sortConfig.direction === 'asc' ? ' ↑' : ' ↓';
-    };
-
-    // ✅ FUNZIONE RIEMPITA
+    /* ------------ PARTNER ASSIGN ------------ */
     const handleAssignPartner = async (slug: string, partner_id: string) => {
         try {
-            await assignPartnerToClient(slug, partner_id, token);
-            setClients(prevClients =>
-                prevClients.map(c => c.slug === slug ? { ...c, partner_id, partner_name: partners.find(p => p.id === partner_id)?.name || null } : c)
+            await assignPartnerToClient(slug, partner_id || null, token);
+            setClients((prev) =>
+                prev.map((c) =>
+                    c.slug === slug
+                        ? { ...c, partner_id: partner_id || null, partner_name: partners.find((p) => p.id === partner_id)?.name || null }
+                        : c,
+                ),
             );
-        } catch (error) {
-            alert("Errore nell'assegnazione del partner.");
+        } catch (err) {
+            alert('Errore assegnazione partner');
         }
     };
 
-    // ✅ FUNZIONE RIEMPITA
+    /* ------------ IMPERSONATE ------------ */
     const handleViewAsClient = async (slug: string) => {
-        if (!token) {
-            alert("Sessione admin non valida. Prova a ricaricare la pagina.");
-            return;
-        }
         try {
-            const { token: tempToken } = await impersonateClient(slug, token);
-            const impersonationUrl = `/#/dashboard/${slug}?impersonation_token=${tempToken}`;
-            window.open(impersonationUrl, '_blank');
-        } catch (error) {
-            console.error("Impossibile impersonare il cliente:", error);
-            alert("Errore durante l'impersonificazione.");
+            const { token: temp } = await impersonateClient(slug, token);
+            window.open(`/#/dashboard/${slug}?impersonation_token=${temp}`, '_blank');
+        } catch (err) {
+            alert('Impersonificazione fallita');
         }
     };
 
-
-    const handleAddNewClient = () => setIsModalOpen(true);
-
-    // ✅ FUNZIONE MANCANTE DA AGGIUNGERE
-    const handleCloseModal = () => setIsModalOpen(false);
-
-    // ✅ FUNZIONE MANCANTE DA AGGIUNGERE
-    const handleSaveClient = async (formData: NewClientFormData) => {
+    /* ------------ SAVE (CREATE / UPDATE) ------------ */
+    const handleSaveClient = async (data: any) => {
         try {
-            await createClient(formData, token); // 'createClient' dovrà essere importato da api.ts
-            handleCloseModal();
-            // Qui ricaricheremo i dati per mostrare il nuovo cliente
-            // loadData(); // (da definire)
-        } catch (error) {
-            alert("Errore nella creazione del cliente.");
-            console.error(error);
+            if (!modal) return;
+
+            if (modal.mode === 'create') {
+                await createClient(data, token);
+            } else {
+                const patch = clean(data);
+                if (patch.partner_id === '') patch.partner_id = null;
+                await updateClient(modal.data.slug, patch, token);
+            }
+
+            await loadData();
+            setModal(null);
+        } catch (err) {
+            alert('Errore salvataggio');
+            console.error(err);
         }
     };
 
-
-    if (loading) return <div className="admin-widget"><h3>Caricamento Clienti...</h3></div>;
+    /* ------------ RENDER ------------ */
+    if (loading) return <div className="admin-widget">Caricamento…</div>;
 
     return (
         <div className="admin-widget">
             <div className="widget-header">
                 <h2>Gestione Clienti</h2>
+                <button className="button-primary" onClick={() => setModal({ mode: 'create' })}>
+                    + Nuovo 👤
+                </button>
             </div>
+
+            {/* ---------- TABLE ---------- */}
             <table className="admin-table">
                 <thead>
                     <tr>
-                        <th onClick={() => requestSort('name')}>Cliente{getSortArrow('name')}</th>
-                        <th onClick={() => requestSort('plan_name')}>Piano{getSortArrow('plan_name')}</th>
-                        <th onClick={() => requestSort('consumption')}>Consumo Chat{getSortArrow('consumption')}</th>
-                        <th onClick={() => requestSort('renew_date')}>Prossimo Rinnovo{getSortArrow('renew_date')}</th>
-                        <th onClick={() => requestSort('partner_name')}>Partner{getSortArrow('partner_name')}</th>
+                        <th onClick={() => toggleSort('name')}>Cliente </th>
+                        <th onClick={() => toggleSort('plan_name')}>Piano</th>
+                        <th onClick={() => toggleSort('consumption')}>Consumo Chat</th>
+                        <th onClick={() => toggleSort('renew_date')}>Prossimo Rinnovo</th>
+                        <th onClick={() => toggleSort('partner_name')}>Partner</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {sortedClients.map(client => {
-                        const daysToRenewal = client.renew_date ? differenceInDays(new Date(client.renew_date), new Date()) : null;
+                    {sortedClients.map((c) => {
+                        const days = differenceInDays(new Date(c.renew_date), new Date());
                         return (
-                            <tr key={client.slug}>
-                                <td>
-                                    {/* ✅ NOME CLIENTE ORA CLICCABILE */}
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleViewAsClient(client.slug); }} className="admin-link">
-                                        {client.name}
+                            <tr key={c.slug}>
+
+                                <td data-label="Cliente">
+                                    <a href="#" onClick={(e) => { e.preventDefault(); handleViewAsClient(c.slug); }}>
+                                        {c.name}
                                     </a>
+                                    <button className="btn-edit-client" onClick={() => setModal({ mode: 'edit', data: c })}>
+                                        ⚙️
+                                    </button>
                                 </td>
-                                <td>{client.plan_name || 'N/A'}</td>
-                                <td>
+                                <td data-label="Piano">{c.plan_name ?? '—'}</td>
+                                <td data-label="Consumo">
                                     <div className="consumption-cell">
-                                        <span>{client.chats_used ?? 0} / {client.monthly_quota ?? '∞'}</span>
-                                        {client.monthly_quota && <ProgressBar value={client.chats_used} max={client.monthly_quota} />}
+                                        {c.chats_used} / {c.monthly_quota ?? '∞'}
+                                        {c.monthly_quota && <ProgressBar value={c.chats_used} max={c.monthly_quota} />}
                                     </div>
                                 </td>
-                                <td>
-                                    {client.renew_date && daysToRenewal !== null ? (
-                                        <>
-                                            {format(new Date(client.renew_date), 'dd/MM/yyyy')}
-                                            <span className="days-left"> ({daysToRenewal} giorni)</span>
-                                        </>
-                                    ) : 'N/A'}
+                                <td data-label="Prossimo Rinnovo">
+                                    {format(new Date(c.renew_date), 'dd/MM/yyyy')}
+                                    <span className="days-left"> ({days} gg)</span>
                                 </td>
-                                <td>
-                                    <select
-                                        value={client.partner_id || ''}
-                                        onChange={(e) => handleAssignPartner(client.slug, e.target.value)}
-                                        className="partner-select"
-                                    >
-                                        <option value="">-- Nessun Partner --</option>
-                                        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
+                                <td data-label="Partner">
+                                    {c.partner_name ?? '—'}
+
                                 </td>
+
                             </tr>
-                        )
+                        );
                     })}
                 </tbody>
             </table>
-            <ClientModal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                onSave={handleSaveClient}
-                plans={plans}
-                partners={partners}
-            />
+
+            {/* ---------- MODAL ---------- */}
+            {modal && (
+                <ClientModal
+                    isOpen
+                    initialValues={
+                        modal.mode === 'edit'
+                            ? { ...modal.data, partner_id: modal.data.partner_id ?? '', plan_id: modal.data.plan_id ?? '' }
+                            : undefined
+                    }
+                    plans={plans}
+                    partners={partners}
+                    onClose={() => setModal(null)}
+                    onSave={handleSaveClient}
+                />
+            )}
         </div>
     );
 }

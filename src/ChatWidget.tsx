@@ -90,7 +90,7 @@ export default function ChatWidget({
   /* -------------------------------------------------- */
   /*  Stato sessione / UI                               */
   /* -------------------------------------------------- */
-  const [sessionId] = useState(() => {
+  const [sessionId, setSessionId] = useState(() => {
     const k = `session_id_${slug}`;
     let id = localStorage.getItem(k);
     if (!id) { id = uuidv4(); localStorage.setItem(k, id); }
@@ -173,11 +173,18 @@ export default function ChatWidget({
       pageContent: pageRef.current ?? undefined,
       stream: true
     };
+    console.log('➡️ [FRONTEND] Invio messaggio con payload:', payload)
     pageRef.current = null;
 
     console.log('➡️ [FRONTEND] Sending payload:', payload);
 
     const es = sendMessageStream(payload);
+    // ► ricevi un eventuale nuovo session_id dal backend
+    es.onsid(newSid => {
+      console.log(`[FRONTEND] 🔔 EVENTO 'sid' RICEVUTO! Vecchio SID: ${sessionId}, Nuovo SID: ${newSid}`);
+      setSessionId(newSid); // Aggiorna lo stato di React
+      localStorage.setItem(`session_id_${slug}`, newSid); // Salva nel localStorage per le sessioni future
+    })
 
     /* ---------- data ---------- */
     es.onmessage(chunk => {
