@@ -3,7 +3,8 @@ import { createContext, useState, useContext, ReactNode, useMemo } from 'react';
 
 interface AuthContextType {
   token: string | null;
-  setToken: (newToken: string | null) => void;
+  // Aggiungi il secondo parametro opzionale 'persist' alla definizione
+  setToken: (newToken: string | null, persist?: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -13,8 +14,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(localStorage.getItem('jwt'));
 
   // Funzione per impostare il token e salvarlo nel localStorage
-  const setToken = (newToken: string | null) => {
-    setTokenState(newToken);
+  const setToken = (newToken: string | null, persist: boolean = true) => {
+    setTokenState(newToken); setTokenState(newToken);
     if (newToken) {
       localStorage.setItem('jwt', newToken);
       sessionStorage.setItem('jwt', newToken); // Opzionale, come facevi tu

@@ -1,0 +1,189 @@
+/* src/pages/AdminDashboard.css */
+.admin-container {
+  padding: 2rem;
+  background-color: #f4f7fa;
+}
+
+.admin-header h1 {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.metrics-grid-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card-admin {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.metric-title {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.admin-main-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+.admin-widget {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.admin-widget h2 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th, .admin-table td {
+  border-bottom: 1px solid #eee;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.admin-table th {
+  background-color: #f9fafb;
+  color: #555;
+  font-weight: 600;
+}
+
+.admin-table select {
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.admin-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.admin-link:hover {
+  text-decoration: underline;
+}
+
+.admin-button-small {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.admin-button-small:hover {
+    background-color: #e0e0e0;
+}
+
+.report-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.report-controls input, .report-controls button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.plan-distribution {
+  margin-top: 1rem;
+}
+.plan-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+.plan-name { color: #333; }
+.plan-count { font-weight: bold; }
+
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+.widget-header h2 {
+  margin: 0;
+}
+
+.consumption-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.progress-bar-container {
+  width: 100px;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 4px;
+}
+.progress-bar-normal { background-color: #28a745; }
+.progress-bar-warning { background-color: #ffc107; }
+.progress-bar-danger { background-color: #dc3545; }
+
+.days-left {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-left: 0.5rem;
+}
+
+.alerts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+/* Stili per il modale */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex; justify-content: center; align-items: center; z-index: 1000;
+}
+.modal-content {
+  background: white; padding: 2rem; border-radius: 8px;
+  width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.modal-content h2 { margin-top: 0; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+.form-group input, .form-group select {
+  width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;
+}
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;
+}

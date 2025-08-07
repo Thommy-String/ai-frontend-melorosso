@@ -1,19 +1,11 @@
 // src/pages/Login.tsx
 import { useState } from 'react';
 import { useAuth } from '../AuthContext';   // ⬅️  contesto
+import { loginUser } from '../api/api';
 import './Login.css';
 
 /* ----------------------------- JWT helper ----------------------------- */
-function parseJwt(token: string) {
-  try {
-    const [, payload] = token.split('.');
-    const padded = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, '=');
-    const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
-  } catch {
-    return null;
-  }
-}
+
 
 /* ===================================================================== */
 export default function Login() {
@@ -30,30 +22,15 @@ export default function Login() {
     setLoad(true);
 
     try {
-      const res = await fetch(
-        'https://ai-backend-melorosso.onrender.com/auth/login', // ⬅️  endpoint reale
-        {
-          method : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({ email, password })
-        }
-      );
-
-      const { token, error } = await res.json();
-      if (!res.ok) throw new Error(error || 'Credenziali non valide');
-
-      const payload = parseJwt(token);
-      if (!payload?.slug) throw new Error('Token privo di slug');
-
-      // salva + notifica tutto il resto dell’app
-      setToken(token);
-
+      // ✅ Usa la funzione centralizzata da api.ts
+      const { token } = await loginUser(email, password);
+      setToken(token); // Imposta il token, il redirect avverrà automaticamente in App.tsx
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
       setLoad(false);
     }
-    // ❌ niente else/finally: resterà in "loading" giusto il tempo del redirect
-  };
+    // Non c'è bisogno di un else o finally, il redirect gestirà il resto.
+  }
 
   /* ----------------------------- UI ----------------------------------- */
   return (

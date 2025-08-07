@@ -3,9 +3,11 @@ import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-
 import Login from './pages/Login';
 import PartnerLogin from './pages/PartnerLogin';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard'; // Assicurati che questo import sia corretto
 import PartnerDashboard from './pages/PartnerDashboard';
 import Insights from './pages/Insights';
 import ChatWidget from './ChatWidget';
+import TokenHandler from './pages/TokenHandler';
 import { useAuth } from './AuthContext';
 
 /* ---------- tema per singolo client (invariato) ------------------- */
@@ -26,7 +28,7 @@ const brand = (slug: string) => ({
   start: 'Scrivi…'
 });
 
-/* ✅ helper aggiornato per analizzare il token di clienti E partner --- */
+/* ---------- helper per analizzare il token (invariato) -------------- */
 function parseTokenPayload(token?: string | null): { slug?: string; partner_id?: string; admin?: boolean } | null {
   if (!token) return null;
   try {
@@ -58,26 +60,37 @@ function ChatRoute() {
 export default function App() {
   const { token } = useAuth();
   const payload = parseTokenPayload(token);
+  const isAdmin = payload?.admin === true;
 
   return (
     <Router>
+      <TokenHandler /> 
       <Routes>
         {/* --- ROTTE DI LOGIN --- */}
         <Route
           path="/login"
-          element={!token ? <Login /> : <Navigate to={`/dashboard/${payload?.slug}`} replace />}
+          // ✅ CORREZIONE: Se l'utente ha già un token, lo reindirizza alla dashboard corretta (admin o cliente)
+          element={!token ? <Login /> : <Navigate to={isAdmin ? '/admin' : `/dashboard/${payload?.slug}`} replace />}
         />
-        {/* ✅ Nuova rotta per il login dei partner */}
         <Route
           path="/partner/login"
           element={!token ? <PartnerLogin /> : <Navigate to="/partner/dashboard" replace />}
         />
 
-        {/* --- ROTTE PROTETTE PER CLIENTI --- */}
+        {/* --- ROTTE PROTETTE --- */}
+
+        {/* ✅ NUOVA ROTTA DEDICATA PER L'ADMIN */}
+        <Route
+          path="/admin"
+          element={token && isAdmin ? <AdminDashboard /> : <Navigate to="/login" replace />}
+        />
+        
+        {/* La dashboard del CLIENTE, accessibile anche dall'admin */}
         <Route
           path="/dashboard/:slug"
           element={token && payload?.slug ? <Dashboard /> : <Navigate to="/login" replace />}
         />
+        
         <Route
           path="/insights/:slug"
           element={token && payload?.slug ? <Insights /> : <Navigate to="/login" replace />}
@@ -87,7 +100,6 @@ export default function App() {
           element={token && payload?.slug ? <ChatRoute /> : <Navigate to="/login" replace />}
         />
 
-        {/* ✅ Nuova rotta protetta per la dashboard dei partner */}
         <Route
           path="/partner/dashboard"
           element={token && payload?.partner_id ? <PartnerDashboard /> : <Navigate to="/partner/login" replace />}
@@ -101,15 +113,17 @@ export default function App() {
               if (!token || !payload) {
                 return <Navigate to="/login" replace />;
               }
-              // Se l'utente è un cliente/admin, vai alla sua dashboard
+              // ✅ CORREZIONE: La logica di fallback ora gestisce correttamente i 3 ruoli
+              if (isAdmin) {
+                return <Navigate to="/admin" replace />;
+              }
               if (payload.slug) {
                 return <Navigate to={`/dashboard/${payload.slug}`} replace />;
               }
-              // Se l'utente è un partner, vai alla sua dashboard
               if (payload.partner_id) {
                 return <Navigate to="/partner/dashboard" replace />;
               }
-              // Altrimenti, torna al login come sicurezza
+              // Sicurezza: se il token è strano, torna al login
               return <Navigate to="/login" replace />;
             })()
           }
