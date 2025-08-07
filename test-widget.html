@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Locale del Chat Widget</title>
+    <style>
+        body { font-family: sans-serif; display: grid; place-content: center; height: 100vh; background-color: #f0f2f5; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Questa è la pagina di test del mio cliente</h1>
+
+    <script type="module" src="http://localhost:5173/src/embed.tsx"></script>
+
+    <script>
+        // Aspetta che la pagina sia completamente caricata
+        window.addEventListener('load', () => {
+            // Controlla che il widget sia disponibile
+            if (window.ChatWidget) {
+                window.ChatWidget.init({
+                    api: "http://localhost:3001/api",
+                    slug: "lilly-brilly",
+                    floating: true,
+                    logoUrl: "https://cdn-icons-png.flaticon.com/512/1048/1048953.png",
+                    accent: "#8A2BE2",
+                    badgeMsgs: "Ciao!|Hai bisogno di aiuto?|Scrivimi pure!",
+                    title: "Assistente Test Locale",
+                    startText: "Scrivi qui per testare..."
+                });
+            } else {
+                console.error("Il ChatWidget non è stato caricato.");
+            }
+        });
+    </script>
+
+</body>
+</html>
