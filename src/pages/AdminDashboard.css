@@ -348,10 +348,10 @@
   cursor: pointer;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
-.button-primary { background-color: var(--accent-color); color: white; }
-.button-primary:hover { background-color: var(--accent-color-hover); }
-.button-secondary { background-color: #e9ecef; color: #333; }
-.button-secondary:hover { background-color: #d8dde2; }
+.button-primary { background-color: #fff; color: #007bff; border: 1px solid #007bff; }
+.button-primary:hover { background-color: #e6f0ff; }
+.button-secondary { background-color: #fff; color: #707070; border: 1px solid #515151; }
+.button-secondary:hover { background-color: #eaeaea; }
 
 .admin-button-small, .btn-edit-client {
   padding: 0.3rem 0.6rem;
@@ -363,7 +363,19 @@
   margin-left: 0.5rem;
 }
 .admin-button-small:hover, .btn-edit-client:hover { background-color: #f3f4f6; }
-
+.button-danger {
+  border: 1px solid #fb5c5c;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  background-color: #ffffff;
+  color: #fb5c5c;
+}
+.button-danger:hover {
+  background-color: #ffdede;
+}
 
 /* --- MODALE --- */
 .modal-overlay {

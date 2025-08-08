@@ -257,6 +257,11 @@ export function createPartner(data: NewPartner, token: string | null) {
   });
 }
 
+export function deletePartner(id: string, opts: { orphan?: boolean } | undefined, token: string | null) {
+  const q = opts?.orphan ? '?orphan=true' : '';
+  return fetchWithAuth(`/admin/partners/${id}${q}`, token, { method: 'DELETE' });
+}
+
 export function updatePartner(
   id: string,
   data: {
@@ -303,6 +308,11 @@ export function createClient(data: NewClient, token: string | null) {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export function deleteClient(slug: string, token: string | null, opts?: { force?: boolean }) {
+  const q = opts?.force ? '?force=true' : '';
+  return fetchWithAuth(`/admin/clients/${slug}${q}`, token, { method: 'DELETE' });
 }
 
 export function updateClient(slug: string, data: Partial<ClientPatch>, token: string | null) {

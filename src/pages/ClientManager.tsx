@@ -9,6 +9,7 @@ import {
     impersonateClient,
     createClient,
     updateClient,
+    deleteClient,
     getPlans,
 } from '../api/api';
 import { differenceInDays, format } from 'date-fns';
@@ -141,7 +142,7 @@ export default function ClientManager() {
         );
     };
 
-    // ✅ Funzioni handler corrette e con i tipi espliciti
+
     const handleAssignPartner = async (slug: string, partner_id: string) => {
         try {
             await assignPartnerToClient(slug, partner_id || null, token);
@@ -157,6 +158,38 @@ export default function ClientManager() {
         }
     };
 
+    const handleDeleteClient = async (slug: string, name: string) => {
+  if (!token) return;
+  const ok = window.confirm(`Eliminare il cliente “${name}”?`);
+  if (!ok) return;
+
+  try {
+    await deleteClient(slug, token); // tentativo soft
+    // aggiorna lista locale
+    setClients(prev => prev.filter(c => c.slug !== slug));
+  } catch (err: any) {
+    const msg = String(err?.message || '');
+    // se 409 proponi force
+    if (msg.includes('409') || msg.toLowerCase().includes('storico')) {
+      const forceOk = window.confirm(
+        `Questo cliente ha dati collegati (storico/usage/chat). ` +
+        `Vuoi eliminarli e proseguire? L'operazione è irreversibile.`
+      );
+      if (!forceOk) return;
+      try {
+        await deleteClient(slug, token, { force: true });
+        setClients(prev => prev.filter(c => c.slug !== slug));
+      } catch (err2) {
+        console.error('Eliminazione cliente (force) fallita:', err2);
+        alert('Errore durante l’eliminazione forzata del cliente');
+      }
+    } else {
+      console.error('Errore eliminazione cliente:', err);
+      alert('Errore eliminazione cliente');
+    }
+  }
+};
+
     const handleViewAsClient = async (slug: string) => {
         try {
             const { token: temp } = await impersonateClient(slug, token);
@@ -168,67 +201,67 @@ export default function ClientManager() {
 
     /* ------------ SAVE (CREATE / UPDATE) ------------ */
     const handleSaveClient = async (data: any) => {
-  try {
-    if (!modal) return;
-
-    if (modal.mode === 'create') {
-      // Creazione continua invariata
-      await createClient(data, token);
-    } else {
-      // Edit: prova l'update completo. Se il backend non supporta ancora PUT /admin/clients/:slug, fai fallback aggiornando solo il partner
-      const patch = clean(data);
-
-      // Normalizza partner_id: stringa vuota -> null
-      const desiredPartnerId: string | null | undefined =
-        Object.prototype.hasOwnProperty.call(patch, 'partner_id')
-          ? (patch.partner_id === '' ? null : patch.partner_id)
-          : undefined;
-
-      // Prepariamo il payload per updateClient senza toccare il partner (lo gestiamo a parte sotto)
-      const { partner_id, ...restPatch } = patch as any;
-
-      let didSomething = false;
-      let fallbackToPartnerOnly = false;
-
-      // 1) Prova ad aggiornare tutti gli altri campi via BE
-      const hasOtherFields = Object.keys(restPatch).length > 0;
-      if (hasOtherFields) {
         try {
-          await updateClient(modal.data.slug, restPatch, token);
-          didSomething = true;
-        } catch (err: any) {
-          // Se il backend non ha ancora la rotta, fai fallback e avvisa
-          const msg = String(err?.message || '');
-          if (msg.includes('404')) {
-            fallbackToPartnerOnly = true;
-          } else {
-            throw err; // errori reali -> esci
-          }
+            if (!modal) return;
+
+            if (modal.mode === 'create') {
+                // Creazione continua invariata
+                await createClient(data, token);
+            } else {
+                // Edit: prova l'update completo. Se il backend non supporta ancora PUT /admin/clients/:slug, fai fallback aggiornando solo il partner
+                const patch = clean(data);
+
+                // Normalizza partner_id: stringa vuota -> null
+                const desiredPartnerId: string | null | undefined =
+                    Object.prototype.hasOwnProperty.call(patch, 'partner_id')
+                        ? (patch.partner_id === '' ? null : patch.partner_id)
+                        : undefined;
+
+                // Prepariamo il payload per updateClient senza toccare il partner (lo gestiamo a parte sotto)
+                const { partner_id, ...restPatch } = patch as any;
+
+                let didSomething = false;
+                let fallbackToPartnerOnly = false;
+
+                // 1) Prova ad aggiornare tutti gli altri campi via BE
+                const hasOtherFields = Object.keys(restPatch).length > 0;
+                if (hasOtherFields) {
+                    try {
+                        await updateClient(modal.data.slug, restPatch, token);
+                        didSomething = true;
+                    } catch (err: any) {
+                        // Se il backend non ha ancora la rotta, fai fallback e avvisa
+                        const msg = String(err?.message || '');
+                        if (msg.includes('404')) {
+                            fallbackToPartnerOnly = true;
+                        } else {
+                            throw err; // errori reali -> esci
+                        }
+                    }
+                }
+
+                // 2) Aggiorna partner se richiesto e diverso dall'attuale
+                if (desiredPartnerId !== undefined && desiredPartnerId !== (modal.data.partner_id ?? null)) {
+                    await assignPartnerToClient(modal.data.slug, desiredPartnerId, token);
+                    didSomething = true;
+                }
+
+                if (fallbackToPartnerOnly && hasOtherFields) {
+                    alert('Il backend non espone ancora la rotta di aggiornamento per i campi: name, contact_email, billing_email, plan_id, password. Ho aggiornato solo il Partner.');
+                }
+
+                if (!didSomething && !hasOtherFields && desiredPartnerId === (modal.data.partner_id ?? null)) {
+                    alert('Nessuna modifica da salvare.');
+                }
+            }
+
+            await loadData();
+            setModal(null);
+        } catch (err) {
+            alert('Errore salvataggio');
+            console.error(err);
         }
-      }
-
-      // 2) Aggiorna partner se richiesto e diverso dall'attuale
-      if (desiredPartnerId !== undefined && desiredPartnerId !== (modal.data.partner_id ?? null)) {
-        await assignPartnerToClient(modal.data.slug, desiredPartnerId, token);
-        didSomething = true;
-      }
-
-      if (fallbackToPartnerOnly && hasOtherFields) {
-        alert('Il backend non espone ancora la rotta di aggiornamento per i campi: name, contact_email, billing_email, plan_id, password. Ho aggiornato solo il Partner.');
-      }
-
-      if (!didSomething && !hasOtherFields && desiredPartnerId === (modal.data.partner_id ?? null)) {
-        alert('Nessuna modifica da salvare.');
-      }
-    }
-
-    await loadData();
-    setModal(null);
-  } catch (err) {
-    alert('Errore salvataggio');
-    console.error(err);
-  }
-};
+    };
 
     if (loading) return <div className="admin-widget">Caricamento…</div>;
 
@@ -246,7 +279,7 @@ export default function ClientManager() {
                         onChange={(e) => setQuery(e.target.value)}
                     />
                     <button className="button-primary" onClick={() => setModal({ mode: 'create' })}>
-                        + Nuovo 👤
+                    Nuovo Cliente
                     </button>
                 </div>
             </div>
@@ -274,6 +307,13 @@ export default function ClientManager() {
                                     </a>
                                     <button className="btn-edit-client" onClick={() => setModal({ mode: 'edit', data: c })}>
                                         ⚙️
+                                    </button>
+                                    <button
+                                        className="admin-button-small"
+                                        onClick={() => handleDeleteClient(c.slug, c.name)}
+                                        title="Elimina cliente"
+                                    >
+                                        🗑️
                                     </button>
                                 </td>
                                 <td data-label="Piano">{c.plan_name ?? '—'}</td>

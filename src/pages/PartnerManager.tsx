@@ -5,6 +5,7 @@ import {
     getPartnersSummary,
     createPartner,
     updatePartner,
+    deletePartner,
     type NewPartner,
     type PartnerPatch,
 } from '../api/api';
@@ -180,6 +181,8 @@ function PartnerModal({
         onSave(values);
     };
 
+
+
     return (
         <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: 640 }}>
@@ -350,6 +353,49 @@ export default function PartnerManager() {
         }
     };
 
+    const handleDeletePartner = async (id: string, name: string) => {
+        if (!token) return;
+
+        // opzionale: blocca cancellazione del partner "melorosso"
+        if (name && name.toLowerCase() === 'melorosso') {
+            alert('Il partner di sistema non può essere eliminato.');
+            return;
+        }
+
+        const ok = window.confirm(`Eliminare il partner “${name}”?`);
+        if (!ok) return;
+
+        try {
+            await deletePartner(id, undefined, token);
+            // aggiorna la lista locale
+            setPartners(prev => prev.filter(p => p.id !== id));
+            // opzionale: aggiorna anche summaries se lo mostri in alto
+            setSummaries(prev => prev.filter(s => s.partner_id !== id));
+        } catch (err: any) {
+            const msg = String(err?.message || '');
+            // 409 = ha clienti associati
+            if (msg.includes('409') || msg.toLowerCase().includes('partner con clienti associati')) {
+                const proceed = window.confirm(
+                    `Questo partner ha clienti associati.\n` +
+                    `Vuoi rimuovere l’associazione dai clienti (impostando partner = Nessuno) e procedere con la cancellazione?`
+                );
+                if (!proceed) return;
+
+                try {
+                    await deletePartner(id, { orphan: true }, token);
+                    setPartners(prev => prev.filter(p => p.id !== id));
+                    setSummaries(prev => prev.filter(s => s.partner_id !== id));
+                } catch (err2: any) {
+                    console.error('Errore eliminazione partner (orphan):', err2);
+                    alert(err2?.message || 'Errore durante l’eliminazione del partner');
+                }
+            } else {
+                console.error('Errore eliminazione partner:', err);
+                alert(msg || 'Errore durante l’eliminazione del partner');
+            }
+        }
+    };
+
     const columns = useMemo(
         () => [
             { key: 'name', label: 'Nome' },
@@ -446,7 +492,18 @@ export default function PartnerManager() {
                                         <td data-label="P. IVA">{p.vat_number || '-'}</td>
                                         <td data-label="Commissione">{fmtPct(p.default_commission_rate)}</td>
                                         <td data-label="Azioni">
-                                            <button className="button-secondary" onClick={() => openEdit(p)}>Modifica</button>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button className="button-secondary" onClick={() => openEdit(p)}>
+                                                    Modifica
+                                                </button>
+                                                <button
+                                                    className="button-danger"
+                                                    onClick={() => handleDeletePartner(p.id, p.name)}
+                                                    title="Elimina partner"
+                                                >
+                                                    Elimina
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
