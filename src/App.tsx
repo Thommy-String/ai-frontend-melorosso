@@ -64,7 +64,7 @@ export default function App() {
 
   return (
     <Router>
-      <TokenHandler /> 
+      <TokenHandler />
       <Routes>
         {/* --- ROTTE DI LOGIN --- */}
         <Route
@@ -74,7 +74,20 @@ export default function App() {
         />
         <Route
           path="/partner/login"
-          element={!token ? <PartnerLogin /> : <Navigate to="/partner/dashboard" replace />}
+          element={
+            !token ? (
+              <PartnerLogin />
+            ) : payload?.partner_id ? (
+              <Navigate to="/partner/dashboard" replace />
+            ) : isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : payload?.slug ? (
+              <Navigate to={`/dashboard/${payload.slug}`} replace />
+            ) : (
+              // token esiste ma payload strano → logout soft: torna al login
+              <Navigate to="/login" replace />
+            )
+          }
         />
 
         {/* --- ROTTE PROTETTE --- */}
@@ -84,13 +97,13 @@ export default function App() {
           path="/admin"
           element={token && isAdmin ? <AdminDashboard /> : <Navigate to="/login" replace />}
         />
-        
+
         {/* La dashboard del CLIENTE, accessibile anche dall'admin */}
         <Route
           path="/dashboard/:slug"
           element={token && payload?.slug ? <Dashboard /> : <Navigate to="/login" replace />}
         />
-        
+
         <Route
           path="/insights/:slug"
           element={token && payload?.slug ? <Insights /> : <Navigate to="/login" replace />}

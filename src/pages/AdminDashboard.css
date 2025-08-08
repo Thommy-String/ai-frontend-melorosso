@@ -1,39 +1,32 @@
 /* src/pages/AdminDashboard.css */
+
+/* --- VARIABILI GLOBALI E RESET --- */
+:root {
+  --admin-bg: #f4f7fa;
+  --widget-bg: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --accent-color: #3b82f6;
+  --accent-color-hover: #2563eb;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --success-color: #22c55e;
+  --radius: 8px;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
 .admin-container {
   padding: 2rem;
-  background-color: #f4f7fa;
+  background-color: var(--admin-bg);
+  font-family: sans-serif;
 }
 
+/* --- HEADER E LAYOUT PRINCIPALE --- */
 .admin-header h1 {
   font-size: 2rem;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 2rem;
-}
-
-.metrics-grid-admin {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.metric-card-admin {
-  background-color: #fff;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.metric-title {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.metric-value {
-  font-size: 2.2rem;
-  font-weight: bold;
-  color: #333;
 }
 
 .admin-main-content {
@@ -42,81 +35,60 @@
   gap: 2rem;
 }
 
-.admin-widget {
-  background-color: #fff;
+/* --- CARD METRICHE --- */
+.metrics-grid-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card-admin {
+  background-color: var(--widget-bg);
   padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-.admin-widget h2 {
-  margin-top: 0;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
+.metric-title {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
 }
 
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
+.metric-value {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.metric-subtext {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.metric-split { margin-top: 0.25rem; }
+.metric-split-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.9rem;
 }
+.metric-split-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-top: 0.35rem;
+  background: #e5e7eb;
+}
+.metric-split-own { background: var(--success-color); height: 100%; }
+.metric-split-partner { background: var(--accent-color); height: 100%; }
 
-.btn-edit-client {
-    margin: 0px 10px;
-    border-style: none;
-    background-color: transparent;
-}
-
-.admin-table th, .admin-table td {
-  border-bottom: 1px solid #eee;
-  padding: 0.75rem;
-  text-align: left;;
-}
-
-.admin-table th {
-  background-color: #f9fafb;
-  color: #555;
-  font-weight: 600;
-}
-
-.admin-table select {
-  padding: 0.4rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-.admin-link {
-  color: #007bff;
-  text-decoration: none;
-  font-weight: 600;
-}
-.admin-link:hover {
-  text-decoration: underline;
-}
-
-.admin-button-small {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-    border: 1px solid #ccc;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.admin-button-small:hover {
-    background-color: #e0e0e0;
-}
-
-.report-controls {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.report-controls input, .report-controls button {
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+@media (max-width: 768px) {
+  .metric-split-legend { font-size: 0.85rem; }
 }
 
 .plan-distribution {
@@ -128,132 +100,294 @@
   padding: 0.25rem 0;
   font-size: 0.9rem;
 }
-.plan-name { color: #333; }
+.plan-name { color: var(--text-primary); }
 .plan-count { font-weight: bold; }
+
+
+/* --- WIDGET GENERICI --- */
+.admin-widget {
+  background-color: var(--widget-bg);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
 
 .widget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
   margin-bottom: 1rem;
 }
+
+
 .widget-header h2 {
   margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
 }
 
+.widget-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.widget-toolbar input[type="search"] {
+  width: 260px;
+  max-width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+
+/* --- TABELLE / GRIGLIE DATI --- */
+.table-responsive {
+  overflow-x: auto; /* Scroll orizzontale se la tabella non ci sta */
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th, .admin-table td {
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  background-color: #f9fafb;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-table th:hover {
+  background-color: #f3f4f6;
+}
+
+/* --- RESPONSIVE HELPERS --- */
+.hide-sm { /* hidden on <=768px */ }
+.hide-xs { /* hidden on <=480px */ }
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* smooth on iOS */
+  }
+  /* keep table layout, allow horizontal scroll if needed */
+  .admin-table {
+    min-width: 720px;
+  }
+}
+
+/* EXISTING mobile card layout kicks in at 768px; enhance it */
+@media (max-width: 768px) {
+  /* --- force card layout & kill horizontal overflow --- */
+  .table-responsive { overflow-x: visible; }
+  .admin-table { min-width: 0; width: 100%; display: block; }
+  .admin-table tbody { display: block; }
+
+  .admin-container {
+    padding: 1rem;
+  }
+  .widget-header { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+  .widget-toolbar { width: 100%; }
+  .widget-toolbar input[type="search"] { width: 100%; }
+
+  .admin-table thead {
+    display: none;
+  }
+  .admin-table tr {
+    display: block;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+  }
+  .admin-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    max-width: 100%;
+  }
+  .admin-table td a { word-break: break-word; }
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+  .admin-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+    padding-right: 1rem;
+  }
+  .admin-table td[data-label="Cliente"] {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics-grid-admin {
+    grid-template-columns: 1fr 1fr; /* 2 cards per riga su telefoni larghi */
+    gap: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  .metrics-grid-admin { grid-template-columns: 1fr; } /* 1 card per riga su telefoni piccoli */
+}
+
+@media (max-width: 480px) {
+  .hide-xs { display: none !important; }
+  .widget-toolbar input[type="search"] {
+    width: 100%;
+  }
+}
+
+/* --- ELEMENTI SPECIFICI DELLE CELLE --- */
 .consumption-cell {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  white-space: nowrap;
 }
 .progress-bar-container {
-  width: 100px;
-  height: 8px;
+  width: 100px; height: 8px;
   background-color: #e9ecef;
   border-radius: 4px;
 }
-.progress-bar {
-  height: 100%;
-  border-radius: 4px;
-}
-.progress-bar-normal { background-color: #28a745; }
-.progress-bar-warning { background-color: #ffc107; }
-.progress-bar-danger { background-color: #dc3545; }
+.progress-bar { height: 100%; border-radius: 4px; }
+.progress-bar-normal { background-color: var(--success-color); }
+.progress-bar-warning { background-color: var(--warning-color); }
+.progress-bar-danger { background-color: var(--danger-color); }
 
 .days-left {
   font-size: 0.8rem;
-  color: #6c757d;
+  color: var(--text-secondary);
   margin-left: 0.5rem;
 }
 
-.alerts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+.admin-link {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 600;
+}
+.admin-link:hover { text-decoration: underline; }
+
+.partner-name { font-weight: 600; }
+.partner-email { font-size: 0.8rem; color: var(--text-secondary); }
+
+.plan-distribution-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+}
+.plan-distribution-cell span {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  background: #f3f4f6;
 }
 
-/* Stili per il modale */
+
+/* --- PULSANTI --- */
+.admin-button, .button-primary, .button-secondary {
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.button-primary { background-color: var(--accent-color); color: white; }
+.button-primary:hover { background-color: var(--accent-color-hover); }
+.button-secondary { background-color: #e9ecef; color: #333; }
+.button-secondary:hover { background-color: #d8dde2; }
+
+.admin-button-small, .btn-edit-client {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--widget-bg);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+.admin-button-small:hover, .btn-edit-client:hover { background-color: #f3f4f6; }
+
+
+/* --- MODALE --- */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background-color: rgba(0, 0, 0, 0.6);
   display: flex; justify-content: center; align-items: center; z-index: 1000;
 }
 .modal-content {
-  background: white; padding: 2rem; border-radius: 8px;
+  background: white; padding: 2rem; border-radius: var(--radius);
   width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 .modal-content h2 { margin-top: 0; }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
 .form-group input, .form-group select {
-  width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px;
+  width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
 }
 .modal-actions {
   display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;
 }
 
 
-
-/* --- ✅ STILI RESPONSIVI PER MOBILE (Versione Aggiornata) --- */
-
+/* --- ✅ STILI RESPONSIVI PER MOBILE --- */
 @media (max-width: 768px) {
-
-  /* ... (le regole per .admin-container, .metrics-grid-admin, .alerts-grid rimangono invariate) ... */
-
-  /* --- Logica per le tabelle --- */
-  .admin-table thead {
-    display: none; /* Nascondi le intestazioni su mobile */
+  .admin-container {
+    padding: 1rem;
   }
-
+  .admin-table thead {
+    display: none;
+  }
   .admin-table tr {
     display: block;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
     margin-bottom: 1.25rem;
     padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
   }
-  
   .admin-table td {
-    display: flex; /* Usiamo flexbox per un allineamento migliore */
-    justify-content: space-between; /* Allinea etichetta e valore ai lati opposti */
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     padding: 0.75rem 0;
     border-bottom: 1px solid #f0f0f0;
     text-align: right;
   }
-
   .admin-table td:last-child {
     border-bottom: none;
   }
-
   .admin-table td::before {
     content: attr(data-label);
     font-weight: 600;
-    color: #333;
-    text-align: left; /* Assicura che l'etichetta sia a sinistra */
+    color: var(--text-primary);
+    text-align: left;
     padding-right: 1rem;
   }
-  
-  /* Stili specifici per celle complesse */
   .admin-table td[data-label="Cliente"] {
     font-size: 1.1rem;
     font-weight: bold;
   }
+}
 
-  .admin-table td[data-label="Cliente"] a {
-    flex-grow: 1; /* Fa in modo che il link occupi lo spazio disponibile */
-    text-align: left;
-  }
-
-  .admin-table td[data-label="Partner"] select {
-    width: auto;
-    max-width: 150px; /* Limita la larghezza del select */
-  }
-
-  .consumption-cell {
-    align-items: flex-end; /* Allinea il contenuto della cella a destra */
-  }
+.admin-table tbody tr:hover {
+  background-color: #fafafa;
 }

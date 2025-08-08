@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import ClientModal from './ClientModal';
 import {
     getAllClients,
-    getPartners,
+    getPartners, // Assicurati che questa esista in api.ts e restituisca solo la lista base
     assignPartnerToClient,
     impersonateClient,
     createClient,
@@ -13,10 +13,7 @@ import {
 } from '../api/api';
 import { differenceInDays, format } from 'date-fns';
 
-/* ------------------------------------------------------------------ */
-/* TYPES                                                              */
-/* ------------------------------------------------------------------ */
-
+// --- TIPI E INTERFACCE ---
 interface Client {
     slug: string;
     name: string;
@@ -31,6 +28,7 @@ interface Client {
     renew_date: string;
 }
 interface Partner { id: string; name: string }
+interface Plan { id: string; name: string }
 
 interface NewClientFormData {
     name: string;
@@ -44,14 +42,10 @@ interface NewClientFormData {
 type SortKey = 'name' | 'plan_name' | 'consumption' | 'renew_date' | 'partner_name';
 type SortDirection = 'asc' | 'desc';
 
-/* ------------------------------------------------------------------ */
-/* HELPERS                                                            */
-/* ------------------------------------------------------------------ */
-
+// --- COMPONENTE HELPER ---
 const ProgressBar = ({ value, max }: { value: number; max: number }) => {
     const pct = max > 0 ? (value / max) * 100 : 0;
-    const cls =
-        pct > 85 ? 'danger' : pct > 65 ? 'warning' : 'normal';
+    const cls = pct > 85 ? 'danger' : pct > 65 ? 'warning' : 'normal';
     return (
         <div className="progress-bar-container">
             <div className={`progress-bar progress-bar-${cls}`} style={{ width: `${pct}%` }} />
@@ -65,42 +59,49 @@ const clean = (obj: Record<string, any>) =>
         Object.entries(obj).filter(([_, v]) => v !== '' && v !== undefined),
     );
 
-/* ------------------------------------------------------------------ */
-/* COMPONENT                                                          */
-/* ------------------------------------------------------------------ */
-
+// ===================================================================
+// COMPONENTE PRINCIPALE
+// ===================================================================
 export default function ClientManager() {
     const { token } = useAuth();
-
     const [clients, setClients] = useState<Client[]>([]);
     const [partners, setPartners] = useState<Partner[]>([]);
-    const [plans, setPlans] = useState([]);
+    const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'name', direction: 'asc' });
+    const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; data: Client }>(null);
+    const [query, setQuery] = useState<string>('');
 
-    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection } | null>({
-        key: 'name',
-        direction: 'asc',
-    });
+    const filteredClients = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return clients; // <-- sostituisci "clients" con il tuo array originale
+        return clients.filter((c) =>
+            [
+                c.name,
+                c.slug,
+                c.contact_email,
+                c.billing_email,
+                c.plan_name,     // se lo hai
+                c.partner_name,  // se lo hai
+            ]
+                .filter(Boolean)
+                .some((v) => String(v).toLowerCase().includes(q))
+        );
+    }, [clients, query]);
 
-    const [modal, setModal] = useState<
-        | null
-        | { mode: 'create' }
-        | { mode: 'edit'; data: Client }
-    >(null);
-
-    /* ------------ LOAD DATA ------------ */
+    // ✅ Logica di caricamento dati centralizzata e corretta
     const loadData = useCallback(async () => {
         if (!token) return;
         try {
             setLoading(true);
-            const [c, p, pl] = await Promise.all([
+            const [clientsData, partnersData, plansData] = await Promise.all([
                 getAllClients(token),
                 getPartners(token),
                 getPlans(token),
             ]);
-            setClients(c.clients);
-            setPartners(p);
-            setPlans(pl);
+            setClients(clientsData.clients);
+            setPartners(partnersData);
+            setPlans(plansData);
         } catch (err) {
             console.error('Errore caricamento dati:', err);
         } finally {
@@ -110,10 +111,12 @@ export default function ClientManager() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
+    // ✅ Logica di ordinamento aggiornata: ordina i risultati filtrati
     /* ------------ SORT ------------ */
     const sortedClients = useMemo(() => {
-        if (!sortConfig) return clients;
-        return [...clients].sort((a, b) => {
+        const base = filteredClients; // ordina i risultati filtrati
+        if (!sortConfig) return base;
+        return [...base].sort((a, b) => {
             const { key, direction } = sortConfig;
             const dir = direction === 'asc' ? 1 : -1;
             const aVal =
@@ -128,7 +131,7 @@ export default function ClientManager() {
             if (aVal > bVal) return 1 * dir;
             return 0;
         });
-    }, [clients, sortConfig]);
+    }, [filteredClients, sortConfig]);
 
     const toggleSort = (key: SortKey) => {
         setSortConfig((prev) =>
@@ -138,7 +141,7 @@ export default function ClientManager() {
         );
     };
 
-    /* ------------ PARTNER ASSIGN ------------ */
+    // ✅ Funzioni handler corrette e con i tipi espliciti
     const handleAssignPartner = async (slug: string, partner_id: string) => {
         try {
             await assignPartnerToClient(slug, partner_id || null, token);
@@ -154,7 +157,6 @@ export default function ClientManager() {
         }
     };
 
-    /* ------------ IMPERSONATE ------------ */
     const handleViewAsClient = async (slug: string) => {
         try {
             const { token: temp } = await impersonateClient(slug, token);
@@ -185,16 +187,25 @@ export default function ClientManager() {
         }
     };
 
-    /* ------------ RENDER ------------ */
     if (loading) return <div className="admin-widget">Caricamento…</div>;
+
+    /* ------------ RENDER ------------ */
 
     return (
         <div className="admin-widget">
             <div className="widget-header">
                 <h2>Gestione Clienti</h2>
-                <button className="button-primary" onClick={() => setModal({ mode: 'create' })}>
-                    + Nuovo 👤
-                </button>
+                <div className="widget-toolbar">
+                    <input
+                        type="search"
+                        placeholder="Cerca clienti…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                    />
+                    <button className="button-primary" onClick={() => setModal({ mode: 'create' })}>
+                        + Nuovo 👤
+                    </button>
+                </div>
             </div>
 
             {/* ---------- TABLE ---------- */}

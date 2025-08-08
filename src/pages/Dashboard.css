@@ -569,6 +569,23 @@ body {
   border-color: var(--c-accent);
 }
 
+.partner-name {
+  font-weight: 600;
+}
+.partner-email {
+  font-size: 0.8rem;
+  color: #666;
+}
+.plan-distribution-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+.table-responsive {
+  overflow-x: auto; /* Permette lo scroll orizzontale della tabella su mobile */
+}
+
 /* --- RESPONSIVE --- */
 @media (max-width: 1200px) {
   .content-sections-grid {

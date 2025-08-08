@@ -1,6 +1,8 @@
 // src/pages/PartnerDashboard.tsx
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
+import { getPartnerDashboard } from '../api/api';
+import './AdminDashboard.css';
 
 // Definisci i tipi per i dati che riceverai
 interface PartnerClient {
@@ -16,7 +18,7 @@ interface PartnerReport {
     clients: PartnerClient[];
 }
 
-const API_BASE = 'https://ai-backend-melorosso.onrender.com';
+
 
 export default function PartnerDashboard() {
     const { token } = useAuth();
@@ -25,34 +27,20 @@ export default function PartnerDashboard() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!token) return;
-
-        const fetchReport = async () => {
-            try {
-                // ✅ Chiama l'endpoint del report per il mese corrente
-                // NOTA: Il tuo endpoint attuale richiede un mese, dovrai adattarlo o crearne uno nuovo
-                // per la dashboard (es. /api/partners/dashboard) che restituisca i dati aggregati.
-                // Per ora, simuliamo una chiamata a un endpoint ipotetico.
-                
-                // IPOTETICO ENDPOINT: /api/partners/dashboard
-                const res = await fetch(`${API_BASE}/api/partners/dashboard`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!res.ok) throw new Error('Errore nel caricamento dei dati');
-                
-                const data = await res.json();
-                setReport(data);
-
-            } catch (err) {
-                setError((err as Error).message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchReport();
-    }, [token]);
+  if (!token) return;
+  const run = async () => {
+    try {
+      setLoading(true);
+      const data = await getPartnerDashboard(token);
+      setReport(data);
+    } catch (err) {
+      setError((err as Error).message || 'Errore nel caricamento dei dati');
+    } finally {
+      setLoading(false);
+    }
+  };
+  run();
+}, [token]);
 
     if (loading) return <div>Caricamento...</div>;
     if (error) return <div>Errore: {error}</div>;

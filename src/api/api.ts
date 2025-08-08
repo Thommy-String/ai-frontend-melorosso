@@ -24,7 +24,7 @@ export interface SendOpts {
   pageContent?: string;
   stream?: boolean;
 }
-
+ 
 export interface NewClient {
   name: string;
   partner_id: string | null;
@@ -41,6 +41,26 @@ export type ClientPatch = Partial<{
   contact_email: string;
   billing_email: string;
   phone?: string;
+}>;
+
+export type NewPartner = {
+  name: string;
+  contact_email: string;
+  password: string; // richiesto in creazione: il backend genererà password_hash
+  phone_number?: string;
+  iban?: string;
+  vat_number?: string;
+  default_commission_rate?: number; // 0..1 (es: 0.2 per 20%)
+};
+
+export type PartnerPatch = Partial<{
+  name: string;
+  contact_email: string;
+  phone_number: string;
+  iban: string;
+  vat_number: string;
+  default_commission_rate: number; // 0..1
+  password: string; // opzionale: se presente, aggiorna la password
 }>;
 
 /* ------------------------------------------------------------------ */
@@ -208,11 +228,36 @@ export function getAllClients(token: string | null) {
   return fetchWithAuth('/admin/clients', token);
 }
 
+// Funzione per la lista semplice (usata in ClientManager)
 export function getPartners(token: string | null) {
   return fetchWithAuth('/admin/partners', token);
 }
 
-export function updatePartner(id: string, data: { default_commission_rate: number }, token: string | null) {
+// Funzione per i dati aggregati (usata in PartnerManager)
+export function getPartnersSummary(token: string | null) {
+  return fetchWithAuth('/admin/partners/summary', token);
+}
+
+export function createPartner(data: NewPartner, token: string | null) {
+  return fetchWithAuth('/admin/partners', token, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updatePartner(
+  id: string,
+  data: {
+    name?: string;
+    contact_email?: string;
+    phone_number?: string;
+    iban?: string;
+    vat_number?: string;
+    default_commission_rate?: number;
+    password?: string;
+  },
+  token: string | null
+) {
   return fetchWithAuth(`/admin/partners/${id}`, token, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -301,4 +346,10 @@ export function getSubscriptionHistory(slug: string, token: string | null) {
 
 export function getChatHistory(sessionId: string, token: string | null) {
   return fetchWithAuth(`/chat/${sessionId}`, token);
+}
+
+
+//per dashboard dei partner
+export function getPartnerDashboard(token: string | null) {
+  return fetchWithAuth('/partners/dashboard', token);
 }

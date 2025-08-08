@@ -1,6 +1,7 @@
 // src/pages/PartnerLogin.tsx
 import { useState } from 'react';
 import { useAuth } from '../AuthContext';
+import { loginPartner } from '../api/api';
 import './Login.css'; // Puoi riutilizzare lo stesso CSS
 
 // ✅ Helper JWT aggiornato per gestire sia partner che clienti
@@ -27,27 +28,21 @@ export default function PartnerLogin() {
     setLoad(true);
 
     try {
-      // ✅ 1. Endpoint modificato per il login dei partner
-      const res = await fetch(
-        'https://ai-backend-melorosso.onrender.com/api/partners/auth/login',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        }
-      );
+      // Usa l'helper centralizzato (rispetta VITE_API_BASE_URL e gestisce gli errori)
+      const { token } = await loginPartner(email, password);
 
-      const { token, error } = await res.json();
-      if (!res.ok) throw new Error(error || 'Credenziali non valide');
-
-      // ✅ 2. Controlliamo il payload del token del partner
+      // Verifica che il token sia davvero da partner
       const payload = parsePartnerJwt(token);
       if (!payload?.partner_id) throw new Error('Token non valido per un partner');
 
+      // Salviamo il token nell'AuthContext
       setToken(token);
 
+      // Redirect alla dashboard partner
+      window.location.hash = '#/partner/dashboard';
     } catch (e) {
       setErr((e as Error).message || 'Errore di autenticazione');
+    } finally {
       setLoad(false);
     }
   };
@@ -64,10 +59,25 @@ export default function PartnerLogin() {
         <form onSubmit={onSubmit} className="login-form">
           {/* ... il resto del form è identico ... */}
           <label className="login-label" htmlFor="email">Email</label>
-          <input id="email" type="email" /* ... */ />
+          <input
+            id="email"
+            type="email"
+            className="login-input"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
           <label className="login-label" htmlFor="password">Password</label>
-          <input id="password" type="password" /* ... */ />
-          <button className="login-btn" type="submit" disabled={loading}>
+          <input
+            id="password"
+            type="password"
+            className="login-input"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPwd(e.target.value)}
+            required
+          />          <button className="login-btn" type="submit" disabled={loading}>
             {loading ? 'Accesso…' : 'Accedi'}
           </button>
         </form>
