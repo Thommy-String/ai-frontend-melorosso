@@ -24,13 +24,14 @@ export interface SendOpts {
   pageContent?: string;
   stream?: boolean;
 }
- 
+
 export interface NewClient {
   name: string;
   partner_id: string | null;
   plan_id: string;
   contact_email: string;
   billing_email: string;
+  password?: string;
   phone?: string;
 }
 
@@ -41,6 +42,7 @@ export type ClientPatch = Partial<{
   contact_email: string;
   billing_email: string;
   phone?: string;
+  password?: string;
 }>;
 
 export type NewPartner = {
@@ -181,8 +183,14 @@ async function fetchWithAuth(path: string, token: string | null, options: Reques
     throw new Error(errorData.error || `La richiesta è fallita con stato ${response.status}`);
   }
   if (response.status === 204) return null;
+  const ct = response.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    // Non è JSON (es. 200 con "OK"), non tentare il parse
+    return null; // oppure: return await response.text();
+  }
   return response.json();
 }
+
 
 
 /* ------------------------------------------------------------------ */
@@ -226,6 +234,10 @@ export function getAdminMetrics(token: string | null) {
 
 export function getAllClients(token: string | null) {
   return fetchWithAuth('/admin/clients', token);
+}
+
+export function getClient(slug: string, token: string | null) {
+  return fetchWithAuth(`/admin/clients/${slug}`, token);
 }
 
 // Funzione per la lista semplice (usata in ClientManager)

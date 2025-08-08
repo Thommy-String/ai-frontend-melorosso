@@ -168,24 +168,67 @@ export default function ClientManager() {
 
     /* ------------ SAVE (CREATE / UPDATE) ------------ */
     const handleSaveClient = async (data: any) => {
+  try {
+    if (!modal) return;
+
+    if (modal.mode === 'create') {
+      // Creazione continua invariata
+      await createClient(data, token);
+    } else {
+      // Edit: prova l'update completo. Se il backend non supporta ancora PUT /admin/clients/:slug, fai fallback aggiornando solo il partner
+      const patch = clean(data);
+
+      // Normalizza partner_id: stringa vuota -> null
+      const desiredPartnerId: string | null | undefined =
+        Object.prototype.hasOwnProperty.call(patch, 'partner_id')
+          ? (patch.partner_id === '' ? null : patch.partner_id)
+          : undefined;
+
+      // Prepariamo il payload per updateClient senza toccare il partner (lo gestiamo a parte sotto)
+      const { partner_id, ...restPatch } = patch as any;
+
+      let didSomething = false;
+      let fallbackToPartnerOnly = false;
+
+      // 1) Prova ad aggiornare tutti gli altri campi via BE
+      const hasOtherFields = Object.keys(restPatch).length > 0;
+      if (hasOtherFields) {
         try {
-            if (!modal) return;
-
-            if (modal.mode === 'create') {
-                await createClient(data, token);
-            } else {
-                const patch = clean(data);
-                if (patch.partner_id === '') patch.partner_id = null;
-                await updateClient(modal.data.slug, patch, token);
-            }
-
-            await loadData();
-            setModal(null);
-        } catch (err) {
-            alert('Errore salvataggio');
-            console.error(err);
+          await updateClient(modal.data.slug, restPatch, token);
+          didSomething = true;
+        } catch (err: any) {
+          // Se il backend non ha ancora la rotta, fai fallback e avvisa
+          const msg = String(err?.message || '');
+          if (msg.includes('404')) {
+            fallbackToPartnerOnly = true;
+          } else {
+            throw err; // errori reali -> esci
+          }
         }
-    };
+      }
+
+      // 2) Aggiorna partner se richiesto e diverso dall'attuale
+      if (desiredPartnerId !== undefined && desiredPartnerId !== (modal.data.partner_id ?? null)) {
+        await assignPartnerToClient(modal.data.slug, desiredPartnerId, token);
+        didSomething = true;
+      }
+
+      if (fallbackToPartnerOnly && hasOtherFields) {
+        alert('Il backend non espone ancora la rotta di aggiornamento per i campi: name, contact_email, billing_email, plan_id, password. Ho aggiornato solo il Partner.');
+      }
+
+      if (!didSomething && !hasOtherFields && desiredPartnerId === (modal.data.partner_id ?? null)) {
+        alert('Nessuna modifica da salvare.');
+      }
+    }
+
+    await loadData();
+    setModal(null);
+  } catch (err) {
+    alert('Errore salvataggio');
+    console.error(err);
+  }
+};
 
     if (loading) return <div className="admin-widget">Caricamento…</div>;
 
