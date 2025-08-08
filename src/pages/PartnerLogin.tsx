@@ -16,7 +16,7 @@ function parsePartnerJwt(token: string) {
 }
 
 export default function PartnerLogin() {
-  const { setToken } = useAuth();
+  const { setPartnerToken } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPwd] = useState('');
   const [loading, setLoad] = useState(false);
@@ -36,7 +36,7 @@ export default function PartnerLogin() {
       if (!payload?.partner_id) throw new Error('Token non valido per un partner');
 
       // Salviamo il token nell'AuthContext
-      setToken(token);
+      setPartnerToken(token);
 
       // Redirect alla dashboard partner
       window.location.hash = '#/partner/dashboard';

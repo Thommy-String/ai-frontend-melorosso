@@ -301,6 +301,43 @@
   background: #f3f4f6;
 }
 
+/* --- partner toolbar sopra la tabella --- */
+.widget-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin: 0 0 1rem 0;
+}
+
+.toolbar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.toolbar-field > span {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.toolbar-field input[type="search"],
+.toolbar-field input[type="month"] {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  min-width: 220px;
+}
+
+.toolbar-grow {
+  flex: 1;
+}
+
+.metric-subtext {
+  margin-top: .35rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 
 /* --- PULSANTI --- */
 .admin-button, .button-primary, .button-secondary {
@@ -347,6 +384,8 @@
 .modal-actions {
   display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;
 }
+
+
 
 
 /* --- ✅ STILI RESPONSIVI PER MOBILE --- */

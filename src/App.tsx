@@ -3,7 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate, useParams } from 'react-
 import Login from './pages/Login';
 import PartnerLogin from './pages/PartnerLogin';
 import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/AdminDashboard'; // Assicurati che questo import sia corretto
+import AdminDashboard from './pages/AdminDashboard';
 import PartnerDashboard from './pages/PartnerDashboard';
 import Insights from './pages/Insights';
 import ChatWidget from './ChatWidget';
@@ -58,9 +58,13 @@ function ChatRoute() {
 
 /* =========================== APP ================================= */
 export default function App() {
-  const { token } = useAuth();
+  // token = effettivo per admin/client (rispetta eventuale impersonation)
+  const { token, partnerToken } = useAuth();
+
   const payload = parseTokenPayload(token);
   const isAdmin = payload?.admin === true;
+
+  const partnerPayload = parseTokenPayload(partnerToken);
 
   return (
     <Router>
@@ -69,36 +73,30 @@ export default function App() {
         {/* --- ROTTE DI LOGIN --- */}
         <Route
           path="/login"
-          // ✅ CORREZIONE: Se l'utente ha già un token, lo reindirizza alla dashboard corretta (admin o cliente)
-          element={!token ? <Login /> : <Navigate to={isAdmin ? '/admin' : `/dashboard/${payload?.slug}`} replace />}
+          element={
+            !token
+              ? <Login />
+              : <Navigate to={isAdmin ? '/admin' : `/dashboard/${payload?.slug}`} replace />
+          }
         />
+
         <Route
           path="/partner/login"
           element={
-            !token ? (
-              <PartnerLogin />
-            ) : payload?.partner_id ? (
-              <Navigate to="/partner/dashboard" replace />
-            ) : isAdmin ? (
-              <Navigate to="/admin" replace />
-            ) : payload?.slug ? (
-              <Navigate to={`/dashboard/${payload.slug}`} replace />
-            ) : (
-              // token esiste ma payload strano → logout soft: torna al login
-              <Navigate to="/login" replace />
-            )
+            !partnerToken
+              ? <PartnerLogin />
+              : partnerPayload?.partner_id
+                ? <Navigate to="/partner/dashboard" replace />
+                : <PartnerLogin />
           }
         />
 
         {/* --- ROTTE PROTETTE --- */}
-
-        {/* ✅ NUOVA ROTTA DEDICATA PER L'ADMIN */}
         <Route
           path="/admin"
           element={token && isAdmin ? <AdminDashboard /> : <Navigate to="/login" replace />}
         />
 
-        {/* La dashboard del CLIENTE, accessibile anche dall'admin */}
         <Route
           path="/dashboard/:slug"
           element={token && payload?.slug ? <Dashboard /> : <Navigate to="/login" replace />}
@@ -108,6 +106,7 @@ export default function App() {
           path="/insights/:slug"
           element={token && payload?.slug ? <Insights /> : <Navigate to="/login" replace />}
         />
+
         <Route
           path="/chat/:slug"
           element={token && payload?.slug ? <ChatRoute /> : <Navigate to="/login" replace />}
@@ -115,7 +114,7 @@ export default function App() {
 
         <Route
           path="/partner/dashboard"
-          element={token && payload?.partner_id ? <PartnerDashboard /> : <Navigate to="/partner/login" replace />}
+          element={partnerToken && partnerPayload?.partner_id ? <PartnerDashboard /> : <Navigate to="/partner/login" replace />}
         />
 
         {/* --- ROTTA DI DEFAULT / FALLBACK --- */}
@@ -123,20 +122,23 @@ export default function App() {
           path="*"
           element={
             (() => {
+              // 1) Se sei partner loggato, vai alla partner dashboard
+              if (partnerToken && partnerPayload?.partner_id) {
+                return <Navigate to="/partner/dashboard" replace />;
+              }
+              // 2) Se non hai token utente, vai al login utente
               if (!token || !payload) {
                 return <Navigate to="/login" replace />;
               }
-              // ✅ CORREZIONE: La logica di fallback ora gestisce correttamente i 3 ruoli
+              // 3) Admin
               if (isAdmin) {
                 return <Navigate to="/admin" replace />;
               }
+              // 4) Cliente
               if (payload.slug) {
                 return <Navigate to={`/dashboard/${payload.slug}`} replace />;
               }
-              if (payload.partner_id) {
-                return <Navigate to="/partner/dashboard" replace />;
-              }
-              // Sicurezza: se il token è strano, torna al login
+              // 5) Fallback sicuro
               return <Navigate to="/login" replace />;
             })()
           }
