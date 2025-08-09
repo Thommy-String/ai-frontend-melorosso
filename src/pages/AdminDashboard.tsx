@@ -5,6 +5,7 @@ import ClientManager from './ClientManager';
 import PartnerManager from './PartnerManager';
 import CommissionReport from './CommissionReport';
 import { useAuth } from '../AuthContext';
+import BillingManager from './BillingManager';
 import './AdminDashboard.css';
 
 interface PlanDistribution {
@@ -227,6 +228,7 @@ export default function AdminDashboard() {
         <ClientManager />
         <PartnerManager />
         <CommissionReport />
+        <BillingManager />
       </div>
     </div>
   );
