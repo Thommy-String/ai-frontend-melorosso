@@ -419,8 +419,9 @@ export function getChatHistory(sessionId: string, token: MaybeToken) {
 
 
 //per dashboard dei partner
-export function getPartnerDashboard(token: MaybeToken) {
-  return fetchWithAuth('/partners/dashboard', token);
+export function getPartnerDashboard(token: MaybeToken, month: string) {
+  // Aggiungiamo il parametro 'month' alla query string
+  return fetchWithAuth(`/partner/dashboard?month=${month}`, token);
 }
 
 export type InvoiceStatusFilter = 'issued' | 'paid' | 'cancelled' | 'all';

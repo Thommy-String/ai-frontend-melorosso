@@ -377,6 +377,101 @@
   background-color: #ffdede;
 }
 
+/*--FILTER PILLS FATTURE--*/
+/* Stili per i filtri rapidi */
+.filter-pills {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.filter-pills button {
+  border: 1px solid #ccc;
+  background: #f7f7f7;
+  border-radius: 99px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.filter-pills button:hover {
+  background: #e9e9e9;
+  border-color: #bbb;
+}
+.filter-pills button.active {
+  background: #eef2ff;
+  color: #3f51b5;
+  border-color: #7986cb;
+  font-weight: 600;
+}
+
+.status-pill {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  align-self: flex-start;
+  font-weight: 500;
+}
+.status-pill.suspended {
+  color: #c62828;
+  background: #fdecea;
+}
+.status-pill.overdue {
+  color: #9c4300;
+  background: #fff8e1;
+}
+
+/* Stili per le notifiche Toast */
+.toast-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 18px;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  z-index: 1000;
+  font-size: 14px;
+  font-weight: 500;
+}
+.toast-notification.success { background: #e6f5ea; color: #0a7d28; }
+.toast-notification.error { background: #fdecea; color: #c62828; }
+.toast-notification.info { background: #e8f4fd; color: #1565c0; }
+
+/* Stili per il Drawer (pannello laterale) */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 40;
+}
+.drawer-content {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 420px;
+  max-width: 90vw;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(0,0,0,0.15);
+  z-index: 50;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.drawer-header {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.drawer-body {
+  padding: 1rem;
+  flex-grow: 1;
+}
+
 /* --- MODALE --- */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;

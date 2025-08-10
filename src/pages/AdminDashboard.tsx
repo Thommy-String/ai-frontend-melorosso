@@ -23,6 +23,19 @@ interface AdminMetrics {
   clientsPerPlan: PlanDistribution[] | null;
 }
 
+interface PartnerSummaryRow {
+  name: string;
+  total_clients?: number | string;
+  commission_earned_monthly?: number | string;
+  commission_potential_monthly?: number | string;
+}
+
+const formatEuro = (n: number) => `€${Number(n || 0).toFixed(2)}`;
+
+const partnerNameMap: Record<string, string> = {
+  skyrocketfake: 'skymonster',
+};
+
 const MetricCard = ({ title, value, sub }: { title: string; value: string | number; sub?: React.ReactNode }) => (
   <div className="metric-card-admin">
     <div className="metric-title">{title}</div>
@@ -43,6 +56,7 @@ export default function AdminDashboard() {
   const [partnerClients, setPartnerClients] = useState<number>(0);
   const [ownClients, setOwnClients] = useState<number>(0);
   const [partnerClientsPct, setPartnerClientsPct] = useState<number>(0);
+  const [partnerRows, setPartnerRows] = useState<PartnerSummaryRow[]>([]);
 
   useEffect(() => {
     if (!token) {
@@ -60,25 +74,31 @@ export default function AdminDashboard() {
 
         // Riepilogo partner per calcolare totale dovuto (somma commissioni)
         try {
-          const summary = await getPartnersSummary(token);
-          const totalOwed = Array.isArray(summary)
-            ? summary
-              .filter((row: any) => String(row?.name ?? '').toLowerCase() !== 'melorosso')
-              .reduce(
-                (acc: number, row: any) =>
-                  acc + Number(row?.commission_owed_monthly ?? row?.monthly_owed_eur ?? 0),
-                0
-              )
-            : 0;
+          const summaryRaw = await getPartnersSummary(token);
+          const summary: PartnerSummaryRow[] = Array.isArray(summaryRaw) ? summaryRaw : [];
+
+          // Filtra fuori "melorosso"
+          const partnerRows = summary.filter(
+            (row) => String(row?.name ?? '').toLowerCase() !== 'melorosso'
+          );
+          setPartnerRows(partnerRows);
+
+          // Somma commissioni (prima il maturato, fallback al potenziale)
+          const totalOwed: number = partnerRows.reduce((acc: number, row: PartnerSummaryRow) => {
+            const earnedRaw = row?.commission_earned_monthly;
+            const earned = Number(earnedRaw);
+            if (Number.isFinite(earned)) return acc + earned;
+            const potential = Number(row?.commission_potential_monthly ?? 0);
+            return acc + (Number.isFinite(potential) ? potential : 0);
+          }, 0);
 
           setPartnersOwed(totalOwed);
 
           // Split clienti: partner vs nostri
-          const partnerCnt = Array.isArray(summary)
-            ? summary
-              .filter((row: any) => String(row?.name ?? '').toLowerCase() !== 'melorosso')
-              .reduce((acc: number, row: any) => acc + Number(row?.total_clients ?? 0), 0)
-            : 0;
+          const partnerCnt: number = partnerRows.reduce((acc: number, row: PartnerSummaryRow) => {
+            return acc + Number(row?.total_clients ?? 0);
+          }, 0);
+
           const totalClients = Number(data?.totalClients || 0);
           const ownCnt = Math.max(totalClients - partnerCnt, 0);
           setPartnerClients(partnerCnt);
@@ -222,6 +242,49 @@ export default function AdminDashboard() {
         <PlanDistributionCard plans={metrics?.clientsPerPlan ?? null} />
 
         <MetricCard title="Partner Totali" value={String(metrics?.totalPartners ?? 'N/D')} />
+      </div>
+
+      <div className="admin-widget" style={{ marginTop: '2rem' }}>
+        <div className="widget-header">
+          <h2>Panoramica Partner (mese corrente)</h2>
+        </div>
+        <div className="table-responsive">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Partner</th>
+                <th>Clienti Totali</th>
+                <th>Dovuto Mensile (€)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {partnerRows && partnerRows.length > 0 ? (
+                partnerRows.map((row, idx) => {
+                  const rawName = String(row?.name ?? '').toLowerCase();
+                  const displayName = partnerNameMap[rawName] ?? (row?.name ?? '—');
+                  const earned = Number(row?.commission_earned_monthly ?? 0);
+                  const fallbackPotential = Number(row?.commission_potential_monthly ?? 0);
+                  const owed = Number.isFinite(earned) && earned > 0 ? earned
+                    : (Number.isFinite(fallbackPotential) ? fallbackPotential : 0);
+                  const clients = Number(row?.total_clients ?? 0);
+                  return (
+                    <tr key={`${displayName}-${idx}`}>
+                      <td data-label="Partner">{displayName}</td>
+                      <td data-label="Clienti Totali">{clients}</td>
+                      <td data-label="Dovuto Mensile (€)">{formatEuro(owed)}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={3} style={{ textAlign: 'center', padding: '1.25rem', color: '#666' }}>
+                    Nessun partner con dati per il mese corrente.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="admin-main-content">

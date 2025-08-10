@@ -44,6 +44,8 @@ interface PartnerSummaryItem {
 // Helper to normalize API summary row to the expected PartnerSummaryItem shape
 function normalizeSummaryRow(row: any): PartnerSummaryItem {
     const monthly = Number(
+        row?.commission_earned_monthly ??
+        row?.commission_potential_monthly ??
         row?.monthly_owed_eur ??
         row?.commission_owed_monthly ??
         row?.monthly_owed ??
@@ -301,7 +303,10 @@ export default function PartnerManager() {
             // riepilogo per partner (tot clienti, per piano, importo mensile dovuto)
             const s = await getPartnersSummary(token);
             const norm = Array.isArray(s) ? s.map(normalizeSummaryRow) : [];
-            setSummaries(norm);
+            const cleaned = norm
+                .filter(r => r.name && r.name.toLowerCase() !== 'melorosso')
+                .sort((a, b) => (b.monthly_owed_eur || 0) - (a.monthly_owed_eur || 0));
+            setSummaries(cleaned);
         } catch (e: any) {
             setErr(e?.message || 'Errore nel caricamento partner');
         } finally {
@@ -458,7 +463,7 @@ export default function PartnerManager() {
                                                 <span>-</span>
                                             )}
                                         </td>
-                                        <td data-label="Dovuto Mensile (€)">{(row.monthly_owed_eur ?? 0).toFixed(2)}</td>
+                                        <td data-label="Dovuto Mensile (€)">€{(row.monthly_owed_eur ?? 0).toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>
